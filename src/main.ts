@@ -1,31 +1,42 @@
-import { basicRocket } from "./fireworks/basicRocket";
-import type { FireworkType } from "./fireworks/types";
+import { fireworkTypes } from "./fireworks/registry";
+import { loadGame, saveGame } from "./game/save";
 import { clickAt, createShow, isShowOver, updateShow } from "./game/show";
+import { startShow } from "./game/state";
+import { payPopsIntoWallet, startShowScoring } from "./game/wallet";
 import { render } from "./render";
 import {
   createScoring,
   drawScoring,
   handleShowEvents,
-  onScored,
-  startScoringShow,
   updateScoring,
 } from "./scoring/scoring";
+import { drawShop, shopClick } from "./shopScreen";
 
-const STARTING_STOCK = 10;
 /** Longest step per frame, so a hidden tab does not skip the whole show. */
 const MAX_STEP = 0.1;
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
 const ctx = canvas.getContext("2d")!;
 
-function newStock(): FireworkType[] {
-  return Array.from({ length: STARTING_STOCK }, () => basicRocket);
+const game = {
+  state: loadGame(),
+  phase: "shop" as "shop" | "show",
+  show: createShow([]),
+  scoring: createScoring(),
+};
+payPopsIntoWallet(game.scoring, game.state, saveGame);
+
+function goToShop(): void {
+  game.phase = "shop";
+  saveGame(game.state);
 }
 
-const game = { show: createShow(newStock()), scoring: createScoring(), money: 0 };
-onScored(game.scoring, (scored) => {
-  if (scored.kind === "popped") game.money += scored.score.money;
-});
+function startNextShow(): void {
+  game.show = createShow(startShow(game.state, fireworkTypes));
+  startShowScoring(game.scoring, game.state);
+  game.phase = "show";
+  saveGame(game.state);
+}
 
 function fitCanvas(): void {
   const scale = window.devicePixelRatio || 1;
@@ -35,14 +46,27 @@ function fitCanvas(): void {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
+  const click = { x: event.offsetX, y: event.offsetY };
+  if (game.phase === "shop") {
+    const result = shopClick(
+      game.state,
+      fireworkTypes,
+      click,
+      canvas.clientWidth,
+      canvas.clientHeight,
+      () => window.confirm("Start a new game? Your money and venue will be lost."),
+    );
+    if (result === "start") startNextShow();
+    else if (result === "changed") saveGame(game.state);
+    return;
+  }
   if (isShowOver(game.show)) {
-    game.show = createShow(newStock());
-    startScoringShow(game.scoring);
+    goToShop();
     return;
   }
   const popped = clickAt(
     game.show,
-    { x: event.offsetX, y: event.offsetY },
+    click,
     canvas.clientWidth,
     canvas.clientHeight,
   );
@@ -54,11 +78,15 @@ let lastTime = performance.now();
 function frame(time: number): void {
   const dt = Math.min((time - lastTime) / 1000, MAX_STEP);
   lastTime = time;
-  const events = updateShow(game.show, dt);
-  handleShowEvents(game.scoring, events, canvas.clientWidth, canvas.clientHeight);
-  updateScoring(game.scoring, dt);
-  render(ctx, game.show, canvas.clientWidth, canvas.clientHeight);
-  drawScoring(ctx, game.scoring, canvas.clientWidth, game.money);
+  if (game.phase === "shop") {
+    drawShop(ctx, game.state, fireworkTypes, canvas.clientWidth, canvas.clientHeight);
+  } else {
+    const events = updateShow(game.show, dt);
+    handleShowEvents(game.scoring, events, canvas.clientWidth, canvas.clientHeight);
+    updateScoring(game.scoring, dt);
+    render(ctx, game.show, canvas.clientWidth, canvas.clientHeight);
+    drawScoring(ctx, game.scoring, canvas.clientWidth, game.state.money);
+  }
   requestAnimationFrame(frame);
 }
 
