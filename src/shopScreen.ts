@@ -39,7 +39,8 @@ const BUTTON_HEIGHT = 36;
 const FONT = "system-ui, sans-serif";
 
 export function formatMoney(amount: number): string {
-  return `£${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+  const digits = Number.isInteger(amount) ? 0 : 2;
+  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }
 
 function panelLeft(width: number): number {

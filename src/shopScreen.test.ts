@@ -79,5 +79,6 @@ describe("shop screen", () => {
   it("formats money in pounds", () => {
     expect(formatMoney(12)).toBe("£12");
     expect(formatMoney(1.5)).toBe("£1.50");
+    expect(formatMoney(5000)).toBe("£5,000");
   });
 });
