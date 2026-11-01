@@ -49,6 +49,13 @@ describe("shop screen", () => {
     expect(state.money).toBe(5);
   });
 
+  it("disables the minus button for fireworks that went into a show", () => {
+    const state = { ...createGameState(), stock: { sparkler: 1 }, lockedStock: { sparkler: 1 } };
+    expect(find(state, "refund").enabled).toBe(false);
+    expect(shopClick(state, types, centre(find(state, "refund")), WIDTH, HEIGHT)).toBeNull();
+    expect(state.money).toBe(0);
+  });
+
   it("upgrades the venue", () => {
     const state = { ...createGameState(), money: 1000 };
     expect(find(state, "upgrade").label).toBe("Move to Village green: £300");

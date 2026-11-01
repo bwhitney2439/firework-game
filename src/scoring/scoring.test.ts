@@ -74,7 +74,8 @@ describe("scoring the show", () => {
 
   it("clears pop-ups and show money for a new show", () => {
     const show = flyingShow();
-    const scoring = createScoring(2);
+    const scoring = createScoring();
+    startScoringShow(scoring, 2);
     const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
     handleShowEvents(scoring, [clickAt(show, at, WIDTH, HEIGHT)], WIDTH, HEIGHT);
     startScoringShow(scoring, 4);

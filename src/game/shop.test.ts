@@ -61,6 +61,26 @@ describe("buying fireworks", () => {
     expect(state.money).toBe(10000);
     expect(refundFirework(state, sparkler)).toBe(false);
   });
+
+  it("does not sell back fireworks that already went into a show", () => {
+    const state = richState();
+    buyFirework(state, sparkler);
+    state.lockedStock.sparkler = 1;
+    expect(refundFirework(state, sparkler)).toBe(false);
+    expect(state.stock).toEqual({ sparkler: 1 });
+    expect(state.money).toBe(10000 - sparkler.price);
+  });
+
+  it("still sells back fireworks bought after the show", () => {
+    const state = richState();
+    state.stock.sparkler = 2;
+    state.lockedStock.sparkler = 2;
+    buyFirework(state, sparkler);
+    expect(refundFirework(state, sparkler)).toBe(true);
+    expect(refundFirework(state, sparkler)).toBe(false);
+    expect(state.stock).toEqual({ sparkler: 2 });
+    expect(state.money).toBe(10000);
+  });
 });
 
 describe("venue upgrades", () => {

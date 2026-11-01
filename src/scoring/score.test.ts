@@ -7,11 +7,11 @@ import {
   createScore,
   crowdMultiplier,
   heightFactor,
+  resetScore,
   scoreEvent,
   scoreFizzle,
   scorePop,
   speedFactor,
-  startShow,
   tickScore,
 } from "./score";
 import {
@@ -172,7 +172,7 @@ describe("new show", () => {
     const score = createScore(2);
     scorePop(score, fireworkAt(1));
     scorePop(score, fireworkAt(1));
-    startShow(score);
+    resetScore(score);
     expect(score.moneyMultiplier).toBe(2);
     expect(score.showMoney).toBe(0);
     expect(score.crowd).toBe(CROWD_START);
@@ -182,7 +182,7 @@ describe("new show", () => {
 
   it("can change the money multiplier", () => {
     const score = createScore(2);
-    startShow(score, 4);
+    resetScore(score, 4);
     expect(score.moneyMultiplier).toBe(4);
   });
 });

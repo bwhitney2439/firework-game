@@ -9,7 +9,6 @@ describe("summary screen", () => {
       launched: 3,
       popped: 2,
       fizzled: 1,
-      bestStreak: 2,
       missedClicks: 5,
     });
     const score = { showMoney: 1250, bestCombo: 3 };
@@ -18,7 +17,6 @@ describe("summary screen", () => {
       ["Popped", "2"],
       ["Fizzled", "1"],
       ["Hit rate", "67%"],
-      ["Best streak", "2"],
       ["Best combo", "3"],
       ["Missed clicks", "5"],
       ["Money earned", "£1,250"],

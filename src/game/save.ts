@@ -1,4 +1,6 @@
-import { type GameState, createGameState } from "./state";
+import { fireworkTypes } from "../fireworks/registry";
+import type { FireworkType } from "../fireworks/types";
+import { type GameState, createGameState, fitStock } from "./state";
 import { venueById } from "./venues";
 
 export const SAVE_KEY = "bonfire-night-popper/save";
@@ -18,8 +20,24 @@ function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
-/** Turns parsed JSON into a valid state. Bad or missing fields get defaults. */
-export function parseSave(data: unknown): GameState {
+/** Reads a count per id. Bad counts are left out. */
+function parseCounts(data: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (typeof data !== "object" || data === null) return counts;
+  for (const [id, count] of Object.entries(data)) {
+    if (isCount(count) && count >= 1) counts[id] = Math.floor(count);
+  }
+  return counts;
+}
+
+/**
+ * Turns parsed JSON into a valid state. Bad or missing fields get defaults,
+ * and the stock is made to fit the venue (see fitStock).
+ */
+export function parseSave(
+  data: unknown,
+  types: FireworkType[] = fireworkTypes,
+): GameState {
   const state = createGameState();
   if (typeof data !== "object" || data === null) return state;
   const saved = data as Record<string, unknown>;
@@ -28,12 +46,9 @@ export function parseSave(data: unknown): GameState {
   if (typeof saved.venueId === "string" && venueById(saved.venueId)) {
     state.venueId = saved.venueId;
   }
-  if (isCount(saved.showsPlayed)) state.showsPlayed = Math.floor(saved.showsPlayed);
-  if (typeof saved.stock === "object" && saved.stock !== null) {
-    for (const [id, count] of Object.entries(saved.stock)) {
-      if (isCount(count) && count >= 1) state.stock[id] = Math.floor(count);
-    }
-  }
+  state.stock = parseCounts(saved.stock);
+  state.lockedStock = parseCounts(saved.lockedStock);
+  fitStock(state, types);
   return state;
 }
 

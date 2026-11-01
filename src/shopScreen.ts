@@ -13,6 +13,7 @@ import {
   boughtCount,
   createGameState,
   currentVenue,
+  refundableCount,
 } from "./game/state";
 import { nextVenue } from "./game/venues";
 import { formatMoney } from "./money";
@@ -80,7 +81,7 @@ export function shopButtons(
       width: 36,
       height: BUTTON_HEIGHT,
       label: "−",
-      enabled: (state.stock[type.id] ?? 0) > 0,
+      enabled: refundableCount(state, type) > 0,
       action: { kind: "refund", type },
     });
     buttons.push({

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SAVE_KEY, type SaveStorage, clearSave, loadGame, parseSave, saveGame } from "./save";
-import { createGameState } from "./state";
+import { basicRocket } from "../fireworks/basicRocket";
+import { fireworkTypes } from "../fireworks/registry";
+import { FREE_BATCH, createGameState, fireworksForShow, fitStock } from "./state";
+import { venues } from "./venues";
 
 function memoryStorage(): SaveStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -18,8 +21,8 @@ describe("save and load", () => {
     const state = {
       money: 42.5,
       venueId: "town-park",
-      stock: { sparkler: 3 },
-      showsPlayed: 7,
+      stock: { "roman-candle": 3 },
+      lockedStock: { "roman-candle": 2 },
     };
     expect(saveGame(state, storage)).toBe(true);
     expect(loadGame(storage)).toEqual(state);
@@ -62,10 +65,46 @@ describe("parsing a save", () => {
       parseSave({
         money: -5,
         venueId: "moon",
-        stock: { sparkler: "lots", rocket: -1, candle: 2 },
-        showsPlayed: "many",
+        stock: { "golden-rain": "lots", "roman-candle": -1, chrysanthemum: 2 },
       }),
-    ).toEqual({ ...createGameState(), stock: { candle: 2 } });
+    ).toEqual({ ...createGameState(), stock: { chrysanthemum: 2 } });
+  });
+
+  it("ignores fields from older saves", () => {
+    expect(parseSave({ money: 5, showsPlayed: 7 })).toEqual({ ...createGameState(), money: 5 });
+  });
+
+  it("refunds stock over the venue cap at the shop price", () => {
+    const candle = fireworkTypes.find((type) => type.id === "roman-candle")!;
+    const space = venues[0].fireworkCap - FREE_BATCH;
+    const state = parseSave({ money: 10, stock: { "roman-candle": space + 18 } });
+    expect(state.stock).toEqual({ "roman-candle": space });
+    expect(state.money).toBe(10 + 18 * candle.price);
+  });
+
+  it("refunds stock over the cap only once", () => {
+    const state = parseSave({ money: 10, stock: { "roman-candle": 33 } });
+    const money = state.money;
+    expect(fitStock(state, fireworkTypes)).toBe(0);
+    fireworksForShow(state, fireworkTypes);
+    expect(state.money).toBe(money);
+  });
+
+  it("keeps locked stock within the saved stock", () => {
+    const state = parseSave({
+      stock: { "roman-candle": 2 },
+      lockedStock: { "roman-candle": 5, chrysanthemum: 1, retired: 2 },
+    });
+    expect(state.lockedStock).toEqual({ "roman-candle": 2 });
+  });
+
+  it("drops unknown and free firework ids", () => {
+    const state = parseSave({
+      money: 10,
+      stock: { retired: 4, [basicRocket.id]: 2, "roman-candle": 1 },
+    });
+    expect(state.stock).toEqual({ "roman-candle": 1 });
+    expect(state.money).toBe(10);
   });
 
   it("gives defaults for non-objects", () => {

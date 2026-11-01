@@ -4,10 +4,10 @@ import { formatMoney } from "../money";
 import { addPopup, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
 import {
   createScore,
+  resetScore,
   type ScoredEvent,
   type ScoreState,
   scoreEvent,
-  startShow,
   tickScore,
 } from "./score";
 
@@ -16,7 +16,7 @@ const MONEY_OFFSET = 26;
 
 /**
  * Scoring for the running game: the score, the floating pop-ups and anyone
- * listening for scored events (sound, summary, shop).
+ * listening for scored events (the wallet, see src/game/wallet.ts).
  */
 export interface Scoring {
   score: ScoreState;
@@ -24,13 +24,13 @@ export interface Scoring {
   listeners: ((scored: ScoredEvent) => void)[];
 }
 
-export function createScoring(moneyMultiplier = 1): Scoring {
-  return { score: createScore(moneyMultiplier), popups: [], listeners: [] };
+export function createScoring(): Scoring {
+  return { score: createScore(), popups: [], listeners: [] };
 }
 
 /**
- * Calls the listener for every scored pop and fizzle. This is where the
- * wallet gets the money: add `scored.score.money` for each pop.
+ * Calls the listener for every scored pop and fizzle. The wallet uses this
+ * to add `scored.score.money` for each pop (see settleScoredEvents).
  */
 export function onScored(
   scoring: Scoring,
@@ -83,7 +83,7 @@ export function startScoringShow(
   scoring: Scoring,
   moneyMultiplier?: number,
 ): void {
-  startShow(scoring.score, moneyMultiplier);
+  resetScore(scoring.score, moneyMultiplier);
   scoring.popups = [];
 }
 

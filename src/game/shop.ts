@@ -1,5 +1,5 @@
 import type { FireworkType } from "../fireworks/types";
-import { type GameState, currentVenue, spaceLeft } from "./state";
+import { type GameState, currentVenue, refundableCount, spaceLeft } from "./state";
 import { nextVenue } from "./venues";
 
 export type ShopResult = "ok" | "too-expensive" | "no-space" | "free" | "top-venue";
@@ -24,10 +24,13 @@ export function buyFirework(state: GameState, type: FireworkType): ShopResult {
   return "ok";
 }
 
-/** Takes one bought firework back for a full refund. */
+/**
+ * Takes one bought firework back for a full refund. Fireworks that already
+ * went into a show cannot be sold back (see GameState.lockedStock).
+ */
 export function refundFirework(state: GameState, type: FireworkType): boolean {
-  const count = state.stock[type.id] ?? 0;
-  if (count <= 0) return false;
+  if (refundableCount(state, type) <= 0) return false;
+  const count = state.stock[type.id];
   state.money += type.price;
   if (count === 1) delete state.stock[type.id];
   else state.stock[type.id] = count - 1;

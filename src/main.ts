@@ -1,9 +1,9 @@
 import { fireworkTypes } from "./fireworks/registry";
 import { loadGame, saveGame } from "./game/save";
-import { type ShowEvent, clickAt, createShow, isShowOver } from "./game/show";
-import { currentVenue, startShow } from "./game/state";
-import { payPopsIntoWallet, startShowScoring } from "./game/wallet";
-import { createSound } from "./polish/sound";
+import { clickAt, createShow, isShowOver } from "./game/show";
+import { currentVenue, fireworksForShow } from "./game/state";
+import { settleScoredEvents, startScoringAtVenue } from "./game/wallet";
+import { createSound, popCheer } from "./polish/sound";
 import {
   createStats,
   isSummaryDue,
@@ -21,6 +21,7 @@ import {
   handleShowEvents,
   updateScoring,
 } from "./scoring/scoring";
+import type { ScoredEvent } from "./scoring/score";
 import { drawShop, shopClick } from "./shopScreen";
 
 /** Longest step per frame, so a hidden tab does not skip the whole show. */
@@ -41,7 +42,7 @@ const game = {
   /** Seconds since the current phase started. */
   phaseTime: 0,
 };
-payPopsIntoWallet(game.scoring, game.state, saveGame);
+settleScoredEvents(game.scoring, game.state, saveGame);
 
 function setPhase(phase: Phase): void {
   game.phase = phase;
@@ -54,9 +55,9 @@ function goToShop(): void {
 }
 
 function startNextShow(): void {
-  game.show = createShow(startShow(game.state, fireworkTypes));
+  game.show = createShow(fireworksForShow(game.state, fireworkTypes));
   game.stats = createStats();
-  startShowScoring(game.scoring, game.state);
+  startScoringAtVenue(game.scoring, game.state);
   setPhase("show");
   saveGame(game.state);
 }
@@ -66,10 +67,10 @@ function afterSummary(): void {
   goToShop();
 }
 
-function playEvent(event: ShowEvent): void {
-  if (event.kind === "popped") {
+function playEvent(scored: ScoredEvent): void {
+  if (scored.kind === "popped") {
     sound.burst();
-    sound.cheer(Math.min(game.stats.streak / 8, 0.6));
+    sound.cheer(popCheer(scored.score.combo));
   } else {
     sound.fizzle();
   }
@@ -117,9 +118,9 @@ canvas.addEventListener("pointerdown", (event) => {
     recordMiss(game.stats);
     return;
   }
-  handleShowEvents(game.scoring, [popped], canvas.clientWidth, canvas.clientHeight);
+  const scored = handleShowEvents(game.scoring, [popped], canvas.clientWidth, canvas.clientHeight);
   recordEvent(game.stats, popped);
-  playEvent(popped);
+  for (const event of scored) playEvent(event);
 });
 
 window.addEventListener("keydown", (event) => {
@@ -143,9 +144,9 @@ function frame(time: number): void {
   } else {
     if (game.phase === "show") {
       const step = stepShow(game.show, game.stats, dt);
-      handleShowEvents(game.scoring, step.events, width, height);
+      const scored = handleShowEvents(game.scoring, step.events, width, height);
       for (let i = 0; i < step.launched; i++) sound.launch();
-      for (const event of step.events) playEvent(event);
+      for (const event of scored) playEvent(event);
       if (isSummaryDue(game.stats)) {
         setPhase("summary");
         sound.cheer(summarize(game.stats, game.scoring.score).hitRate);

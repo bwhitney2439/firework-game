@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type AudioContextLike, createSound } from "./sound";
+import { type AudioContextLike, createSound, popCheer } from "./sound";
 
 /** Just enough of an AudioContext to count the nodes each sound makes. */
 function fakeContext(state: AudioContextState = "running") {
@@ -106,5 +106,17 @@ describe("sound", () => {
     const sound = createSound(() => null);
     sound.unlock();
     expect(() => playAll(sound)).not.toThrow();
+  });
+});
+
+describe("pop cheer", () => {
+  it("grows with the combo", () => {
+    expect(popCheer(1)).toBeLessThan(popCheer(2));
+    expect(popCheer(2)).toBeLessThan(popCheer(4));
+  });
+
+  it("stays below the end-of-show cheer for long combos", () => {
+    expect(popCheer(100)).toBe(0.6);
+    expect(popCheer(0)).toBe(0);
   });
 });

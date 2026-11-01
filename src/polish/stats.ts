@@ -19,9 +19,6 @@ export interface ShowStats {
   fizzled: number;
   /** Clicks that hit nothing while fireworks were in the air. */
   missedClicks: number;
-  /** Pops in a row without a fizzle. */
-  streak: number;
-  bestStreak: number;
   /** Seconds since the show ended. Zero while it is running. */
   overFor: number;
 }
@@ -32,21 +29,13 @@ export function createStats(): ShowStats {
     popped: 0,
     fizzled: 0,
     missedClicks: 0,
-    streak: 0,
-    bestStreak: 0,
     overFor: 0,
   };
 }
 
 export function recordEvent(stats: ShowStats, event: ShowEvent): void {
-  if (event.kind === "popped") {
-    stats.popped++;
-    stats.streak++;
-    stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
-  } else {
-    stats.fizzled++;
-    stats.streak = 0;
-  }
+  if (event.kind === "popped") stats.popped++;
+  else stats.fizzled++;
 }
 
 export function recordMiss(stats: ShowStats): void {
@@ -89,7 +78,6 @@ export interface Summary {
   popped: number;
   fizzled: number;
   missedClicks: number;
-  bestStreak: number;
   /** Share of launched fireworks that were popped, from 0 to 1. */
   hitRate: number;
   /** Money earned in this show. */
@@ -140,7 +128,6 @@ export function summarize(stats: ShowStats, score: ShowScore): Summary {
     popped: stats.popped,
     fizzled: stats.fizzled,
     missedClicks: stats.missedClicks,
-    bestStreak: stats.bestStreak,
     hitRate,
     money: score.showMoney,
     bestCombo: score.bestCombo,
