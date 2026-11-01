@@ -51,7 +51,7 @@ describe("shop screen", () => {
 
   it("upgrades the venue", () => {
     const state = { ...createGameState(), money: 1000 };
-    expect(find(state, "upgrade").label).toBe("Move to Village green: £30");
+    expect(find(state, "upgrade").label).toBe("Move to Village green: £300");
     shopClick(state, types, centre(find(state, "upgrade")), WIDTH, HEIGHT);
     expect(state.venueId).toBe(venues[1].id);
   });

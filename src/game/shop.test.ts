@@ -14,7 +14,7 @@ import { venues } from "./venues";
 const sparkler: FireworkType = { ...basicRocket, id: "sparkler", price: 5 };
 
 function richState() {
-  return { ...createGameState(), money: 1000 };
+  return { ...createGameState(), money: 10000 };
 }
 
 describe("shop items", () => {
@@ -58,7 +58,7 @@ describe("buying fireworks", () => {
     expect(state.stock).toEqual({ sparkler: 1 });
     expect(refundFirework(state, sparkler)).toBe(true);
     expect(state.stock).toEqual({});
-    expect(state.money).toBe(1000);
+    expect(state.money).toBe(10000);
     expect(refundFirework(state, sparkler)).toBe(false);
   });
 });

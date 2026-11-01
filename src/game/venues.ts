@@ -27,7 +27,7 @@ export const venues: Venue[] = [
     fireworkCap: 25,
     crowd: 150,
     crowdMultiplier: 1.5,
-    price: 30,
+    price: 300,
   },
   {
     id: "town-park",
@@ -35,7 +35,7 @@ export const venues: Venue[] = [
     fireworkCap: 40,
     crowd: 2000,
     crowdMultiplier: 2.5,
-    price: 120,
+    price: 1200,
   },
   {
     id: "city-stadium",
@@ -43,7 +43,7 @@ export const venues: Venue[] = [
     fireworkCap: 60,
     crowd: 40000,
     crowdMultiplier: 4,
-    price: 400,
+    price: 5000,
   },
 ];
 
