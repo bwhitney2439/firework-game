@@ -6,6 +6,7 @@ import {
   createScoring,
   drawScoring,
   handleShowEvents,
+  onScored,
   startScoringShow,
   updateScoring,
 } from "./scoring/scoring";
@@ -21,7 +22,10 @@ function newStock(): FireworkType[] {
   return Array.from({ length: STARTING_STOCK }, () => basicRocket);
 }
 
-const game = { show: createShow(newStock()), scoring: createScoring() };
+const game = { show: createShow(newStock()), scoring: createScoring(), money: 0 };
+onScored(game.scoring, (scored) => {
+  if (scored.kind === "popped") game.money += scored.score.money;
+});
 
 function fitCanvas(): void {
   const scale = window.devicePixelRatio || 1;
@@ -54,7 +58,7 @@ function frame(time: number): void {
   handleShowEvents(game.scoring, events, canvas.clientWidth, canvas.clientHeight);
   updateScoring(game.scoring, dt);
   render(ctx, game.show, canvas.clientWidth, canvas.clientHeight);
-  drawScoring(ctx, game.scoring, canvas.clientWidth);
+  drawScoring(ctx, game.scoring, canvas.clientWidth, game.money);
   requestAnimationFrame(frame);
 }
 

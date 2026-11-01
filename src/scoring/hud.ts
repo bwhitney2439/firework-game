@@ -6,11 +6,12 @@ const METER_WIDTH = 180;
 const METER_HEIGHT = 14;
 const MARGIN = 16;
 
-/** Money, crowd meter, multiplier and combo in the top right corner. */
+/** Wallet, crowd meter, multiplier and combo in the top right corner. */
 export function drawScoreHud(
   ctx: CanvasRenderingContext2D,
   score: ScoreState,
   width: number,
+  wallet: number,
 ): void {
   const right = width - MARGIN;
   const left = right - METER_WIDTH;
@@ -19,7 +20,7 @@ export function drawScoreHud(
   ctx.textAlign = "right";
   ctx.fillStyle = "#7ee081";
   ctx.font = "bold 22px system-ui, sans-serif";
-  ctx.fillText(formatMoney(score.money), right, 32);
+  ctx.fillText(formatMoney(wallet), right, 32);
 
   ctx.font = "14px system-ui, sans-serif";
   ctx.fillStyle = "#f5f5f5";

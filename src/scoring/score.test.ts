@@ -49,7 +49,6 @@ describe("pop value", () => {
     const score = createScore();
     const pop = scorePop(score, fireworkAt(0.5));
     expect(pop.money).toBe(basicRocket.baseValue * MONEY_PER_BASE_VALUE);
-    expect(score.money).toBe(pop.money);
     expect(score.showMoney).toBe(pop.money);
   });
 
@@ -132,11 +131,19 @@ describe("crowd multiplier", () => {
   });
 });
 
+describe("venue multiplier", () => {
+  it("scales the money for a pop", () => {
+    const plain = scorePop(createScore(), fireworkAt(0.5));
+    const venue = scorePop(createScore(4), fireworkAt(0.5));
+    expect(venue.venueMultiplier).toBe(4);
+    expect(venue.money).toBe(plain.money * 4);
+  });
+});
+
 describe("fizzles", () => {
   it("earn nothing", () => {
-    const score = createScore(50);
+    const score = createScore();
     scoreFizzle(score);
-    expect(score.money).toBe(50);
     expect(score.showMoney).toBe(0);
   });
 });
@@ -154,23 +161,28 @@ describe("show events", () => {
     const firework = fireworkAt(0.5);
     const popped = scoreEvent(score, { kind: "popped", firework, at: { x: 0, y: 0 } });
     expect(popped.kind).toBe("popped");
-    expect(score.money).toBeGreaterThan(0);
+    expect(score.showMoney).toBeGreaterThan(0);
     const fizzled = scoreEvent(score, { kind: "fizzled", firework });
     expect(fizzled.kind).toBe("fizzled");
   });
 });
 
 describe("new show", () => {
-  it("keeps the money and resets the crowd and combo", () => {
-    const score = createScore();
+  it("resets the crowd, combo and show money", () => {
+    const score = createScore(2);
     scorePop(score, fireworkAt(1));
     scorePop(score, fireworkAt(1));
-    const money = score.money;
     startShow(score);
-    expect(score.money).toBe(money);
+    expect(score.venueMultiplier).toBe(2);
     expect(score.showMoney).toBe(0);
     expect(score.crowd).toBe(CROWD_START);
     expect(score.combo).toBe(0);
     expect(score.time).toBe(0);
+  });
+
+  it("can change the venue multiplier", () => {
+    const score = createScore(2);
+    startShow(score, 4);
+    expect(score.venueMultiplier).toBe(4);
   });
 });

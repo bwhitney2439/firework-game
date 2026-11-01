@@ -19,11 +19,18 @@ import {
   SPEED_FACTOR_MIN,
 } from "./tuning";
 
+/**
+ * Scoring for one show. The player's wallet is not kept here: listeners add
+ * each pop's money to it (see onScored in scoring.ts).
+ */
 export interface ScoreState {
-  /** All money earned. Only pops add to it. */
-  money: number;
   /** Money earned in the current show. */
   showMoney: number;
+  /**
+   * Extra money factor set from outside, for example by the venue.
+   * It carries over to the next show.
+   */
+  venueMultiplier: number;
   /** Crowd meter from 0 to 1. */
   crowd: number;
   /** Pops in the current combo. Zero when there is no combo. */
@@ -44,6 +51,7 @@ export interface PopScore {
   speedFactor: number;
   comboFactor: number;
   crowdMultiplier: number;
+  venueMultiplier: number;
   combo: number;
   /** Crowd meter after the pop. */
   crowd: number;
@@ -60,10 +68,10 @@ export interface FizzleScore {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-export function createScore(money = 0): ScoreState {
+export function createScore(venueMultiplier = 1): ScoreState {
   return {
-    money,
     showMoney: 0,
+    venueMultiplier,
     crowd: CROWD_START,
     combo: 0,
     bestCombo: 0,
@@ -72,9 +80,12 @@ export function createScore(money = 0): ScoreState {
   };
 }
 
-/** Starts a new show. Money carries over; the crowd and combo start again. */
-export function startShow(score: ScoreState): void {
-  Object.assign(score, createScore(score.money));
+/** Starts a new show: the crowd, combo and show money start again. */
+export function startShow(
+  score: ScoreState,
+  venueMultiplier = score.venueMultiplier,
+): void {
+  Object.assign(score, createScore(venueMultiplier));
 }
 
 /** Moves the scoring clock forward by dt seconds. */
@@ -112,7 +123,7 @@ export function crowdMultiplier(crowd: number): number {
   return 1 + (CROWD_MULTIPLIER_MAX - 1) * Math.max(0, over);
 }
 
-/** Scores a popped firework: adds money and raises the crowd. */
+/** Scores a popped firework: works out its money and raises the crowd. */
 export function scorePop(score: ScoreState, firework: Firework): PopScore {
   const height = clamp(flightProgress(firework), 0, 1);
 
@@ -129,6 +140,7 @@ export function scorePop(score: ScoreState, firework: Firework): PopScore {
     comboFactor: comboFactor(score.combo),
     // The crowd as it was when the firework was popped.
     crowdMultiplier: crowdMultiplier(score.crowd),
+    venueMultiplier: score.venueMultiplier,
   };
   const money = Math.round(
     firework.type.baseValue *
@@ -136,9 +148,9 @@ export function scorePop(score: ScoreState, firework: Firework): PopScore {
       factors.heightFactor *
       factors.speedFactor *
       factors.comboFactor *
-      factors.crowdMultiplier,
+      factors.crowdMultiplier *
+      factors.venueMultiplier,
   );
-  score.money += money;
   score.showMoney += money;
 
   const gain = CROWD_GAIN_LOW + (CROWD_GAIN_HIGH - CROWD_GAIN_LOW) * height;

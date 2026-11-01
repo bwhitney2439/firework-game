@@ -23,11 +23,14 @@ export interface Scoring {
   listeners: ((scored: ScoredEvent) => void)[];
 }
 
-export function createScoring(money = 0): Scoring {
-  return { score: createScore(money), popups: [], listeners: [] };
+export function createScoring(venueMultiplier = 1): Scoring {
+  return { score: createScore(venueMultiplier), popups: [], listeners: [] };
 }
 
-/** Calls the listener for every scored pop and fizzle. */
+/**
+ * Calls the listener for every scored pop and fizzle. This is where the
+ * wallet gets the money: add `scored.score.money` for each pop.
+ */
 export function onScored(
   scoring: Scoring,
   listener: (scored: ScoredEvent) => void,
@@ -71,9 +74,15 @@ export function updateScoring(scoring: Scoring, dt: number): void {
   scoring.popups = updatePopups(scoring.popups, dt);
 }
 
-/** Resets the crowd and combo for a new show. Money carries over. */
-export function startScoringShow(scoring: Scoring): void {
-  startShow(scoring.score);
+/**
+ * Resets the crowd, combo and show money for a new show. Pass a venue
+ * multiplier to change it; otherwise the last one is kept.
+ */
+export function startScoringShow(
+  scoring: Scoring,
+  venueMultiplier?: number,
+): void {
+  startShow(scoring.score, venueMultiplier);
   scoring.popups = [];
 }
 
@@ -82,7 +91,8 @@ export function drawScoring(
   ctx: CanvasRenderingContext2D,
   scoring: Scoring,
   width: number,
+  wallet: number,
 ): void {
   drawPopups(ctx, scoring.popups);
-  drawScoreHud(ctx, scoring.score, width);
+  drawScoreHud(ctx, scoring.score, width, wallet);
 }

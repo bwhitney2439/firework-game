@@ -30,9 +30,9 @@ describe("scoring the show", () => {
     const [scored] = handleShowEvents(scoring, [popped], WIDTH, HEIGHT);
 
     expect(scored.kind).toBe("popped");
-    expect(scoring.score.money).toBeGreaterThan(0);
+    expect(scoring.score.showMoney).toBeGreaterThan(0);
     expect(scoring.popups.map((popup) => popup.style)).toEqual(["cheer", "money"]);
-    expect(scoring.popups[1].text).toBe(`+£${scoring.score.money}`);
+    expect(scoring.popups[1].text).toBe(`+£${scoring.score.showMoney}`);
   });
 
   it("ignores a click that missed", () => {
@@ -50,30 +50,36 @@ describe("scoring the show", () => {
     const events = updateShow(show, 10, middle);
     handleShowEvents(scoring, events, WIDTH, HEIGHT);
 
-    expect(scoring.score.money).toBe(0);
+    expect(scoring.score.showMoney).toBe(0);
     expect(scoring.score.crowd).toBeLessThan(crowd);
     expect(scoring.popups.map((popup) => popup.style)).toEqual(["groan"]);
   });
 
-  it("tells listeners about each scored event", () => {
+  it("tells listeners about each scored event so they can fill a wallet", () => {
     const show = flyingShow();
     const scoring = createScoring();
+    let wallet = 0;
     const heard: string[] = [];
-    onScored(scoring, (scored) => heard.push(scored.kind));
+    onScored(scoring, (scored) => {
+      heard.push(scored.kind);
+      if (scored.kind === "popped") wallet += scored.score.money;
+    });
     const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
     handleShowEvents(scoring, [clickAt(show, at, WIDTH, HEIGHT)], WIDTH, HEIGHT);
+    handleShowEvents(scoring, updateShow(show, 10, middle), WIDTH, HEIGHT);
     expect(heard).toEqual(["popped"]);
+    expect(wallet).toBe(scoring.score.showMoney);
   });
 
-  it("clears pop-ups but keeps money for a new show", () => {
+  it("clears pop-ups and show money for a new show", () => {
     const show = flyingShow();
-    const scoring = createScoring(5);
+    const scoring = createScoring(2);
     const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
     handleShowEvents(scoring, [clickAt(show, at, WIDTH, HEIGHT)], WIDTH, HEIGHT);
-    const money = scoring.score.money;
-    startScoringShow(scoring);
+    startScoringShow(scoring, 4);
     expect(scoring.popups).toEqual([]);
-    expect(scoring.score.money).toBe(money);
+    expect(scoring.score.showMoney).toBe(0);
+    expect(scoring.score.venueMultiplier).toBe(4);
   });
 });
 
