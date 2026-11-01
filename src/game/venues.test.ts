@@ -15,7 +15,7 @@ describe("venues", () => {
     for (let i = 1; i < venues.length; i++) {
       expect(venues[i].fireworkCap).toBeGreaterThan(venues[i - 1].fireworkCap);
       expect(venues[i].crowd).toBeGreaterThan(venues[i - 1].crowd);
-      expect(venues[i].crowdMultiplier).toBeGreaterThan(venues[i - 1].crowdMultiplier);
+      expect(venues[i].moneyMultiplier).toBeGreaterThan(venues[i - 1].moneyMultiplier);
       expect(venues[i].price).toBeGreaterThan(venues[i - 1].price);
     }
   });

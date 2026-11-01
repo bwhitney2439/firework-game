@@ -38,9 +38,12 @@ export function spaceLeft(state: GameState): number {
   );
 }
 
-/** Money for one pop at the current venue. */
+/**
+ * Money for one pop at the current venue. Task 2's scoring works out its own
+ * per-pop money with the venue multiplier in it; use that instead once merged.
+ */
 export function popMoney(state: GameState, type: FireworkType): number {
-  return type.baseValue * currentVenue(state).crowdMultiplier;
+  return type.baseValue * currentVenue(state).moneyMultiplier;
 }
 
 /** Adds the money for one pop and returns the amount. */

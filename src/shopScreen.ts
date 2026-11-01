@@ -13,7 +13,6 @@ import {
   boughtCount,
   createGameState,
   currentVenue,
-  popMoney,
 } from "./game/state";
 import { nextVenue } from "./game/venues";
 
@@ -205,7 +204,7 @@ export function drawShop(
   ctx.font = `15px ${FONT}`;
   ctx.fillStyle = "#b8bdd6";
   ctx.fillText(
-    `Crowd ${venue.crowd.toLocaleString("en-GB")}  ·  ${venue.crowdMultiplier}× money per pop  ·  up to ${venue.fireworkCap} fireworks`,
+    `Crowd ${venue.crowd.toLocaleString("en-GB")}  ·  ${venue.moneyMultiplier}× pay per pop  ·  up to ${venue.fireworkCap} fireworks`,
     left,
     160,
   );
@@ -237,7 +236,7 @@ export function drawShop(
     ctx.fillStyle = "#b8bdd6";
     ctx.font = `13px ${FONT}`;
     ctx.fillText(
-      `${formatMoney(popMoney(state, type))} per pop here`,
+      `Pays ${type.baseValue}× a basic rocket`,
       left + 12,
       top + ROW_HEIGHT / 2 + 11,
     );

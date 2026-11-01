@@ -42,13 +42,13 @@ describe("money per pop", () => {
     const state = createGameState();
     expect(popMoney(state, sparkler)).toBe(3);
     state.venueId = venues[3].id;
-    expect(popMoney(state, sparkler)).toBe(3 * venues[3].crowdMultiplier);
+    expect(popMoney(state, sparkler)).toBe(3 * venues[3].moneyMultiplier);
   });
 
   it("adds the pop money to the state", () => {
     const state = { ...createGameState(), venueId: venues[1].id };
     const amount = earnPop(state, basicRocket);
-    expect(amount).toBe(venues[1].crowdMultiplier);
+    expect(amount).toBe(venues[1].moneyMultiplier);
     expect(state.money).toBe(amount);
   });
 });
