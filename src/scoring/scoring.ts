@@ -1,6 +1,7 @@
 import { fireworkPosition, type ShowEvent } from "../game/show";
 import { drawScoreHud } from "./hud";
-import { addPopup, drawPopups, formatMoney, type Popup, updatePopups } from "./popups";
+import { formatMoney } from "../money";
+import { addPopup, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
 import {
   createScore,
   type ScoredEvent,
@@ -50,7 +51,7 @@ export function handleShowEvents(
     if (!event) continue;
     const scored = scoreEvent(scoring.score, event);
     if (scored.kind === "popped") {
-      const { at } = scored.event;
+      const at = popupAnchor(scored.event.at, width);
       const cheer = scored.score.combo > 1
         ? `${scored.score.cheer}! x${scored.score.combo}`
         : `${scored.score.cheer}!`;
@@ -60,7 +61,7 @@ export function handleShowEvents(
         y: at.y + MONEY_OFFSET,
       });
     } else {
-      const at = fireworkPosition(scored.event.firework, width, height);
+      const at = popupAnchor(fireworkPosition(scored.event.firework, width, height), width);
       addPopup(scoring.popups, "Aww...", "groan", at);
     }
     for (const listener of scoring.listeners) listener(scored);
@@ -86,13 +87,14 @@ export function startScoringShow(
   scoring.popups = [];
 }
 
-/** Draws the pop-ups and the score HUD over the show. */
+/** Draws the pop-ups and the score HUD (with the venue name) over the show. */
 export function drawScoring(
   ctx: CanvasRenderingContext2D,
   scoring: Scoring,
   width: number,
   wallet: number,
+  venue: string,
 ): void {
   drawPopups(ctx, scoring.popups);
-  drawScoreHud(ctx, scoring.score, width, wallet);
+  drawScoreHud(ctx, scoring.score, width, wallet, venue);
 }

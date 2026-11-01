@@ -3,7 +3,7 @@ import { basicRocket } from "./fireworks/basicRocket";
 import type { FireworkType } from "./fireworks/types";
 import { createGameState } from "./game/state";
 import { venues } from "./game/venues";
-import { type ShopButton, formatMoney, shopButtons, shopClick } from "./shopScreen";
+import { type ShopButton, shopButtons, shopClick } from "./shopScreen";
 
 const WIDTH = 1000;
 const HEIGHT = 800;
@@ -74,11 +74,5 @@ describe("shop screen", () => {
 
   it("does nothing for a click on empty space", () => {
     expect(shopClick(createGameState(), types, { x: 1, y: 1 }, WIDTH, HEIGHT)).toBeNull();
-  });
-
-  it("formats money in pounds", () => {
-    expect(formatMoney(12)).toBe("£12");
-    expect(formatMoney(1.5)).toBe("£1.50");
-    expect(formatMoney(5000)).toBe("£5,000");
   });
 });

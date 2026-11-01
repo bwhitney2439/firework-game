@@ -3,7 +3,7 @@ import { createStats, summarize } from "./stats";
 import { canContinue, summaryRows } from "./summaryScreen";
 
 describe("summary screen", () => {
-  it("lists the counts and the hit rate as a percentage", () => {
+  it("lists the counts, the hit rate as a percentage and the show money", () => {
     const stats = createStats();
     Object.assign(stats, {
       launched: 3,
@@ -12,13 +12,16 @@ describe("summary screen", () => {
       bestStreak: 2,
       missedClicks: 5,
     });
-    expect(summaryRows(summarize(stats))).toEqual([
+    const score = { showMoney: 1250, bestCombo: 3 };
+    expect(summaryRows(summarize(stats, score))).toEqual([
       ["Launched", "3"],
       ["Popped", "2"],
       ["Fizzled", "1"],
       ["Hit rate", "67%"],
       ["Best streak", "2"],
+      ["Best combo", "3"],
       ["Missed clicks", "5"],
+      ["Money earned", "£1,250"],
     ]);
   });
 

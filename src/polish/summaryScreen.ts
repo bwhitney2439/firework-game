@@ -1,3 +1,4 @@
+import { formatMoney } from "../money";
 import type { Summary } from "./stats";
 
 /** Seconds the summary takes to fade in. */
@@ -17,7 +18,9 @@ export function summaryRows(summary: Summary): [string, string][] {
     ["Fizzled", `${summary.fizzled}`],
     ["Hit rate", `${Math.round(summary.hitRate * 100)}%`],
     ["Best streak", `${summary.bestStreak}`],
+    ["Best combo", `${summary.bestCombo}`],
     ["Missed clicks", `${summary.missedClicks}`],
+    ["Money earned", formatMoney(summary.money)],
   ];
 }
 

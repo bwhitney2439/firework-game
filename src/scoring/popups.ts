@@ -1,5 +1,13 @@
 import type { Point } from "../fireworks/types";
-import { POPUP_DURATION, POPUP_RISE } from "./tuning";
+import { HUD_BOTTOM, HUD_WIDTH } from "./hud";
+import {
+  COUNTS_LINE_BOTTOM,
+  POPUP_DURATION,
+  POPUP_GAP,
+  POPUP_HALF_WIDTH,
+  POPUP_RISE,
+  POPUP_TEXT_HEIGHT,
+} from "./tuning";
 
 export type PopupStyle = "cheer" | "money" | "groan";
 
@@ -11,8 +19,16 @@ export interface Popup {
   age: number;
 }
 
-export function formatMoney(amount: number): string {
-  return `£${amount}`;
+/**
+ * Where a pop-up for something at `at` starts. It is moved down if needed so
+ * that, after drifting up, it stays below the counts line in the top left and
+ * below the HUD in the top right.
+ */
+export function popupAnchor(at: Point, width: number): Point {
+  const underHud = at.x > width - HUD_WIDTH - POPUP_HALF_WIDTH;
+  const clearOf = underHud ? HUD_BOTTOM : COUNTS_LINE_BOTTOM;
+  const lowest = clearOf + POPUP_GAP + POPUP_TEXT_HEIGHT + POPUP_RISE;
+  return { x: at.x, y: Math.max(at.y, lowest) };
 }
 
 export function addPopup(

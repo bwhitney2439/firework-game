@@ -92,7 +92,17 @@ export interface Summary {
   bestStreak: number;
   /** Share of launched fireworks that were popped, from 0 to 1. */
   hitRate: number;
+  /** Money earned in this show. */
+  money: number;
+  /** Longest combo in this show. */
+  bestCombo: number;
   rating: Rating;
+}
+
+/** The show's scoring totals; they start again with every show. */
+export interface ShowScore {
+  showMoney: number;
+  bestCombo: number;
 }
 
 export function rate(hitRate: number, launched: number): Rating {
@@ -123,7 +133,7 @@ export function rate(hitRate: number, launched: number): Rating {
   };
 }
 
-export function summarize(stats: ShowStats): Summary {
+export function summarize(stats: ShowStats, score: ShowScore): Summary {
   const hitRate = stats.launched > 0 ? stats.popped / stats.launched : 0;
   return {
     launched: stats.launched,
@@ -132,6 +142,8 @@ export function summarize(stats: ShowStats): Summary {
     missedClicks: stats.missedClicks,
     bestStreak: stats.bestStreak,
     hitRate,
+    money: score.showMoney,
+    bestCombo: score.bestCombo,
     rating: rate(hitRate, stats.launched),
   };
 }

@@ -44,3 +44,11 @@ export const AAH_PROGRESS = 0.6;
 export const POPUP_DURATION = 1.2;
 /** Pixels a pop-up drifts upwards over its life. */
 export const POPUP_RISE = 50;
+/** Height of the biggest pop-up text, in pixels. */
+export const POPUP_TEXT_HEIGHT = 26;
+/** About half the width of a wide pop-up such as "Aah! x3". */
+export const POPUP_HALF_WIDTH = 70;
+/** Lowest point of the counts line that render.ts draws in the top left. */
+export const COUNTS_LINE_BOTTOM = 40;
+/** Space kept between a pop-up and the text above it. */
+export const POPUP_GAP = 8;

@@ -1,7 +1,7 @@
 import { fireworkTypes } from "./fireworks/registry";
 import { loadGame, saveGame } from "./game/save";
 import { type ShowEvent, clickAt, createShow, isShowOver } from "./game/show";
-import { startShow } from "./game/state";
+import { currentVenue, startShow } from "./game/state";
 import { payPopsIntoWallet, startShowScoring } from "./game/wallet";
 import { createSound } from "./polish/sound";
 import {
@@ -148,14 +148,20 @@ function frame(time: number): void {
       for (const event of step.events) playEvent(event);
       if (isSummaryDue(game.stats)) {
         setPhase("summary");
-        sound.cheer(summarize(game.stats).hitRate);
+        sound.cheer(summarize(game.stats, game.scoring.score).hitRate);
       }
     }
     updateScoring(game.scoring, dt);
     render(ctx, game.show, width, height);
-    drawScoring(ctx, game.scoring, width, game.state.money);
+    drawScoring(ctx, game.scoring, width, game.state.money, currentVenue(game.state).name);
     if (game.phase === "summary") {
-      drawSummaryScreen(ctx, summarize(game.stats), width, height, game.phaseTime);
+      drawSummaryScreen(
+        ctx,
+        summarize(game.stats, game.scoring.score),
+        width,
+        height,
+        game.phaseTime,
+      );
     }
   }
   requestAnimationFrame(frame);

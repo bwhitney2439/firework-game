@@ -15,6 +15,7 @@ import {
   currentVenue,
 } from "./game/state";
 import { nextVenue } from "./game/venues";
+import { formatMoney } from "./money";
 
 export type ShopAction =
   | { kind: "buy"; type: FireworkType }
@@ -37,11 +38,6 @@ const PANEL_WIDTH = 640;
 const ROW_HEIGHT = 48;
 const BUTTON_HEIGHT = 36;
 const FONT = "system-ui, sans-serif";
-
-export function formatMoney(amount: number): string {
-  const digits = Number.isInteger(amount) ? 0 : 2;
-  return `£${amount.toLocaleString("en-GB", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
-}
 
 function panelLeft(width: number): number {
   return Math.max(16, (width - PANEL_WIDTH) / 2);

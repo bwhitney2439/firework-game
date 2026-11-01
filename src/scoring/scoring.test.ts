@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
 import { clickAt, createShow, fireworkPosition, updateShow } from "../game/show";
-import { popupPosition, updatePopups } from "./popups";
+import { HUD_BOTTOM } from "./hud";
+import { popupAnchor, popupPosition, updatePopups } from "./popups";
 import {
   createScoring,
   handleShowEvents,
@@ -9,7 +10,7 @@ import {
   startScoringShow,
   updateScoring,
 } from "./scoring";
-import { POPUP_DURATION } from "./tuning";
+import { COUNTS_LINE_BOTTOM, POPUP_DURATION, POPUP_TEXT_HEIGHT } from "./tuning";
 
 const WIDTH = 1000;
 const HEIGHT = 800;
@@ -80,6 +81,54 @@ describe("scoring the show", () => {
     expect(scoring.popups).toEqual([]);
     expect(scoring.score.showMoney).toBe(0);
     expect(scoring.score.moneyMultiplier).toBe(4);
+  });
+
+  it("starts the best combo again for a new show", () => {
+    const show = createShow([basicRocket, basicRocket]);
+    updateShow(show, 1, middle);
+    updateShow(show, 1, middle);
+    const scoring = createScoring();
+    for (const firework of [...show.active]) {
+      const at = fireworkPosition(firework, WIDTH, HEIGHT);
+      handleShowEvents(scoring, [clickAt(show, at, WIDTH, HEIGHT)], WIDTH, HEIGHT);
+    }
+    expect(scoring.score.bestCombo).toBe(2);
+    startScoringShow(scoring);
+    expect(scoring.score.bestCombo).toBe(0);
+  });
+});
+
+/** Top of a pop-up's text at the end of its life, when it is highest. */
+function highestTop(popup: Parameters<typeof popupPosition>[0]) {
+  return popupPosition({ ...popup, age: POPUP_DURATION }).y - POPUP_TEXT_HEIGHT;
+}
+
+describe("pop-up placement", () => {
+  it("keeps a fizzle's Aww... below the counts line in the top left", () => {
+    const groan = { kind: "fizzled" as const, firework: { type: basicRocket, launchX: 0.1, age: 99 } };
+    const scoring = createScoring();
+    handleShowEvents(scoring, [groan], WIDTH, HEIGHT);
+    const [popup] = scoring.popups;
+    expect(popup.text).toBe("Aww...");
+    expect(highestTop(popup)).toBeGreaterThan(COUNTS_LINE_BOTTOM);
+  });
+
+  it("keeps pop-ups near the top right below the HUD", () => {
+    const scoring = createScoring();
+    handleShowEvents(
+      scoring,
+      [{ kind: "popped", firework: { type: basicRocket, launchX: 0.9, age: 2 }, at: { x: WIDTH - 60, y: 40 } }],
+      WIDTH,
+      HEIGHT,
+    );
+    for (const popup of scoring.popups) {
+      expect(highestTop(popup)).toBeGreaterThan(HUD_BOTTOM);
+    }
+  });
+
+  it("leaves pop-ups lower down where they are", () => {
+    expect(popupAnchor({ x: 500, y: 400 }, WIDTH)).toEqual({ x: 500, y: 400 });
+    expect(popupAnchor({ x: WIDTH - 20, y: 400 }, WIDTH)).toEqual({ x: WIDTH - 20, y: 400 });
   });
 });
 

@@ -87,13 +87,15 @@ describe("stepShow", () => {
   });
 });
 
+const noScore = { showMoney: 0, bestCombo: 0 };
+
 describe("summary", () => {
   it("works out the hit rate from launches", () => {
     const stats = createStats();
     stats.launched = 4;
     stats.popped = 3;
     stats.fizzled = 1;
-    expect(summarize(stats)).toMatchObject({
+    expect(summarize(stats, noScore)).toMatchObject({
       launched: 4,
       popped: 3,
       fizzled: 1,
@@ -101,8 +103,14 @@ describe("summary", () => {
     });
   });
 
+  it("takes the show money and best combo from the show's score", () => {
+    const summary = summarize(createStats(), { showMoney: 1234, bestCombo: 5 });
+    expect(summary.money).toBe(1234);
+    expect(summary.bestCombo).toBe(5);
+  });
+
   it("has a hit rate of zero when nothing launched", () => {
-    expect(summarize(createStats()).hitRate).toBe(0);
+    expect(summarize(createStats(), noScore).hitRate).toBe(0);
   });
 
   it("rates the show by hit rate", () => {
