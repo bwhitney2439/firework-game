@@ -18,10 +18,16 @@ export interface GameState {
    * whatever the player did not get to use.
    */
   stock: Record<string, number>;
+  /**
+   * How many of `stock` already went into a show: count per type id. They
+   * still play in the next show but cannot be sold back, so a reload cannot
+   * turn a firework that was about to fizzle back into money.
+   */
+  lockedStock: Record<string, number>;
 }
 
 export function createGameState(): GameState {
-  return { money: 0, venueId: venues[0].id, stock: {} };
+  return { money: 0, venueId: venues[0].id, stock: {}, lockedStock: {} };
 }
 
 export function currentVenue(state: GameState): Venue {
@@ -39,6 +45,22 @@ export function spaceLeft(state: GameState): number {
     0,
     currentVenue(state).fireworkCap - FREE_BATCH - boughtCount(state),
   );
+}
+
+/** How many of this type's bought fireworks can still be sold back. */
+export function refundableCount(state: GameState, type: FireworkType): number {
+  const count = state.stock[type.id] ?? 0;
+  return Math.max(0, count - (state.lockedStock[type.id] ?? 0));
+}
+
+/** Keeps each locked count within the stock it locks. */
+function trimLocked(state: GameState): void {
+  const locked: Record<string, number> = {};
+  for (const [id, count] of Object.entries(state.lockedStock)) {
+    const kept = Math.min(count, state.stock[id] ?? 0);
+    if (kept > 0) locked[id] = kept;
+  }
+  state.lockedStock = locked;
 }
 
 /**
@@ -60,6 +82,7 @@ export function fitStock(state: GameState, types: FireworkType[]): number {
     refund += (count - kept) * type.price;
   }
   state.stock = stock;
+  trimLocked(state);
   state.money += refund;
   return refund;
 }
@@ -67,7 +90,7 @@ export function fitStock(state: GameState, types: FireworkType[]): number {
 /**
  * The fireworks for the next show: the free batch with the bought stock
  * mixed in. The stock is not used up here; useFirework takes each one out
- * as it pops or fizzles.
+ * as it pops or fizzles. All of it is locked, so none can be sold back.
  */
 export function fireworksForShow(
   state: GameState,
@@ -75,6 +98,7 @@ export function fireworksForShow(
   random: () => number = Math.random,
 ): FireworkType[] {
   fitStock(state, types);
+  state.lockedStock = { ...state.stock };
   const fireworks: FireworkType[] = Array.from(
     { length: FREE_BATCH },
     () => basicRocket,
@@ -96,4 +120,5 @@ export function useFirework(state: GameState, type: FireworkType): void {
   if (count <= 0) return;
   if (count === 1) delete state.stock[type.id];
   else state.stock[type.id] = count - 1;
+  trimLocked(state);
 }

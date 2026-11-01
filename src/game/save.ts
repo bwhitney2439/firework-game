@@ -20,6 +20,16 @@ function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+/** Reads a count per id. Bad counts are left out. */
+function parseCounts(data: unknown): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (typeof data !== "object" || data === null) return counts;
+  for (const [id, count] of Object.entries(data)) {
+    if (isCount(count) && count >= 1) counts[id] = Math.floor(count);
+  }
+  return counts;
+}
+
 /**
  * Turns parsed JSON into a valid state. Bad or missing fields get defaults,
  * and the stock is made to fit the venue (see fitStock).
@@ -36,11 +46,8 @@ export function parseSave(
   if (typeof saved.venueId === "string" && venueById(saved.venueId)) {
     state.venueId = saved.venueId;
   }
-  if (typeof saved.stock === "object" && saved.stock !== null) {
-    for (const [id, count] of Object.entries(saved.stock)) {
-      if (isCount(count) && count >= 1) state.stock[id] = Math.floor(count);
-    }
-  }
+  state.stock = parseCounts(saved.stock);
+  state.lockedStock = parseCounts(saved.lockedStock);
   fitStock(state, types);
   return state;
 }

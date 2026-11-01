@@ -8,6 +8,7 @@ import {
   currentVenue,
   fireworksForShow,
   fitStock,
+  refundableCount,
   spaceLeft,
   useFirework,
 } from "./state";
@@ -88,6 +89,14 @@ describe("fitting the stock to the venue", () => {
     expect(state.money).toBe(FREE_BATCH * sparkler.price);
   });
 
+  it("keeps the locked count within the stock it kept", () => {
+    const state = createGameState();
+    state.stock = { sparkler: space + 2, candle: 1 };
+    state.lockedStock = { sparkler: space + 2, candle: 1, retired: 3 };
+    fitStock(state, [sparkler]);
+    expect(state.lockedStock).toEqual({ sparkler: space });
+  });
+
   it("drops unknown and free ids without paying for them", () => {
     const state = createGameState();
     state.stock = { retired: 4, [basicRocket.id]: 2, sparkler: 1 };
@@ -127,6 +136,14 @@ describe("starting a show", () => {
     expect(state.money).toBe((100 - (venues[0].fireworkCap - FREE_BATCH)) * sparkler.price);
   });
 
+  it("locks the bought stock so it cannot be sold back", () => {
+    const state = createGameState();
+    state.stock = { sparkler: 2 };
+    fireworksForShow(state, [sparkler], first);
+    expect(state.lockedStock).toEqual({ sparkler: 2 });
+    expect(refundableCount(state, sparkler)).toBe(0);
+  });
+
   it("drops ids that are not in the registry", () => {
     const state = createGameState();
     state.stock.retired = 4;
@@ -150,6 +167,16 @@ describe("using a firework", () => {
     expect(state.stock).toEqual({ sparkler: 1 });
     useFirework(state, sparkler);
     expect(state.stock).toEqual({});
+  });
+
+  it("unlocks the used firework too", () => {
+    const state = createGameState();
+    state.stock.sparkler = 2;
+    state.lockedStock.sparkler = 2;
+    useFirework(state, sparkler);
+    expect(state.lockedStock).toEqual({ sparkler: 1 });
+    useFirework(state, sparkler);
+    expect(state.lockedStock).toEqual({});
   });
 
   it("does nothing for a free rocket", () => {
