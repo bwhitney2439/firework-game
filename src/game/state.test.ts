@@ -6,8 +6,10 @@ import {
   boughtCount,
   createGameState,
   currentVenue,
+  fireworksForShow,
+  fitStock,
   spaceLeft,
-  startShow,
+  useFirework,
 } from "./state";
 import { venues } from "./venues";
 
@@ -20,7 +22,6 @@ describe("game state", () => {
     expect(state.money).toBe(0);
     expect(currentVenue(state)).toBe(venues[0]);
     expect(boughtCount(state)).toBe(0);
-    expect(state.showsPlayed).toBe(0);
   });
 
   it("is plain data that survives JSON", () => {
@@ -50,46 +51,111 @@ describe("firework cap", () => {
   });
 });
 
+describe("fitting the stock to the venue", () => {
+  const candle: FireworkType = { ...basicRocket, id: "candle", price: 40, baseValue: 5 };
+  const space = venues[0].fireworkCap - FREE_BATCH;
+
+  it("leaves stock that fits alone", () => {
+    const state = { ...createGameState(), money: 7 };
+    state.stock = { sparkler: 2, candle: 1 };
+    expect(fitStock(state, [sparkler, candle])).toBe(0);
+    expect(state.stock).toEqual({ sparkler: 2, candle: 1 });
+    expect(state.money).toBe(7);
+  });
+
+  it("refunds fireworks over the cap at their shop price", () => {
+    const state = { ...createGameState(), money: 7 };
+    state.stock = { sparkler: space + 3 };
+    expect(fitStock(state, [sparkler])).toBe(3 * sparkler.price);
+    expect(state.stock).toEqual({ sparkler: space });
+    expect(state.money).toBe(7 + 3 * sparkler.price);
+    expect(spaceLeft(state)).toBe(0);
+  });
+
+  it("keeps types in order and refunds the ones that no longer fit", () => {
+    const state = createGameState();
+    state.stock = { candle: 2, sparkler: space };
+    fitStock(state, [sparkler, candle]);
+    expect(state.stock).toEqual({ sparkler: space });
+    expect(state.money).toBe(2 * candle.price);
+  });
+
+  it("uses the cap of the current venue", () => {
+    const state = { ...createGameState(), venueId: venues[1].id };
+    state.stock = { sparkler: venues[1].fireworkCap };
+    fitStock(state, [sparkler]);
+    expect(state.stock.sparkler).toBe(venues[1].fireworkCap - FREE_BATCH);
+    expect(state.money).toBe(FREE_BATCH * sparkler.price);
+  });
+
+  it("drops unknown and free ids without paying for them", () => {
+    const state = createGameState();
+    state.stock = { retired: 4, [basicRocket.id]: 2, sparkler: 1 };
+    expect(fitStock(state, [basicRocket, sparkler])).toBe(0);
+    expect(state.stock).toEqual({ sparkler: 1 });
+    expect(state.money).toBe(0);
+  });
+});
+
 describe("starting a show", () => {
   it("gives the free batch of basic rockets with no purchases", () => {
     const state = createGameState();
-    const stock = startShow(state, [basicRocket, sparkler], first);
+    const stock = fireworksForShow(state, [basicRocket, sparkler], first);
     expect(stock).toHaveLength(FREE_BATCH);
     expect(stock.every((type) => type === basicRocket)).toBe(true);
   });
 
-  it("adds purchases on top of the free batch and uses them up", () => {
+  it("adds purchases on top of the free batch and keeps them in the stock", () => {
     const state = createGameState();
     state.stock.sparkler = 2;
-    const stock = startShow(state, [basicRocket, sparkler], first);
+    const stock = fireworksForShow(state, [basicRocket, sparkler], first);
     expect(stock).toHaveLength(FREE_BATCH + 2);
     expect(stock.filter((type) => type === sparkler)).toHaveLength(2);
-    expect(state.stock).toEqual({});
-    expect(state.showsPlayed).toBe(1);
+    expect(state.stock).toEqual({ sparkler: 2 });
   });
 
   it("gives the free batch again next show", () => {
     const state = createGameState();
-    startShow(state, [basicRocket], first);
-    expect(startShow(state, [basicRocket], first)).toHaveLength(FREE_BATCH);
+    fireworksForShow(state, [basicRocket], first);
+    expect(fireworksForShow(state, [basicRocket], first)).toHaveLength(FREE_BATCH);
   });
 
-  it("never goes over the venue cap", () => {
+  it("never goes over the venue cap and refunds the extras", () => {
     const state = createGameState();
     state.stock.sparkler = 100;
-    expect(startShow(state, [sparkler], first)).toHaveLength(venues[0].fireworkCap);
+    expect(fireworksForShow(state, [sparkler], first)).toHaveLength(venues[0].fireworkCap);
+    expect(state.money).toBe((100 - (venues[0].fireworkCap - FREE_BATCH)) * sparkler.price);
   });
 
   it("drops ids that are not in the registry", () => {
     const state = createGameState();
     state.stock.retired = 4;
-    expect(startShow(state, [basicRocket], first)).toHaveLength(FREE_BATCH);
+    expect(fireworksForShow(state, [basicRocket], first)).toHaveLength(FREE_BATCH);
+    expect(state.stock).toEqual({});
   });
 
   it("mixes the purchases in among the free rockets", () => {
     const state = createGameState();
     state.stock.sparkler = 1;
-    const stock = startShow(state, [sparkler], first);
+    const stock = fireworksForShow(state, [sparkler], first);
     expect(stock[stock.length - 1]).toBe(basicRocket);
+  });
+});
+
+describe("using a firework", () => {
+  it("takes one bought firework out of the stock", () => {
+    const state = createGameState();
+    state.stock.sparkler = 2;
+    useFirework(state, sparkler);
+    expect(state.stock).toEqual({ sparkler: 1 });
+    useFirework(state, sparkler);
+    expect(state.stock).toEqual({});
+  });
+
+  it("does nothing for a free rocket", () => {
+    const state = createGameState();
+    state.stock.sparkler = 1;
+    useFirework(state, basicRocket);
+    expect(state.stock).toEqual({ sparkler: 1 });
   });
 });

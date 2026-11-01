@@ -20,8 +20,8 @@ import {
 } from "./tuning";
 
 /**
- * Scoring for one show. The player's wallet is not kept here: listeners add
- * each pop's money to it (see onScored in scoring.ts).
+ * Scoring for one show. The player's wallet is not kept here: the wallet
+ * listens for scored pops and adds their money (see src/game/wallet.ts).
  */
 export interface ScoreState {
   /** Money earned in the current show. */
@@ -42,7 +42,7 @@ export interface ScoreState {
   lastPopTime: number | null;
 }
 
-/** How one pop was scored. Sound, summary or shop code can use this. */
+/** How one pop was scored: its money and the factors behind it. */
 export interface PopScore {
   money: number;
   /** Flight progress at the pop, from 0 to 1. */
@@ -81,7 +81,7 @@ export function createScore(moneyMultiplier = 1): ScoreState {
 }
 
 /** Starts a new show: the crowd, combo and show money start again. */
-export function startShow(
+export function resetScore(
   score: ScoreState,
   moneyMultiplier = score.moneyMultiplier,
 ): void {

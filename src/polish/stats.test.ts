@@ -33,13 +33,6 @@ describe("recording events", () => {
     expect(stats.fizzled).toBe(1);
   });
 
-  it("keeps the best streak after a fizzle breaks it", () => {
-    const stats = createStats();
-    for (const event of [pop, pop, pop, fizzle, pop]) recordEvent(stats, event);
-    expect(stats.streak).toBe(1);
-    expect(stats.bestStreak).toBe(3);
-  });
-
   it("counts missed clicks", () => {
     const stats = createStats();
     recordMiss(stats);

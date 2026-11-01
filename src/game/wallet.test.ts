@@ -2,20 +2,23 @@ import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
 import { createScoring, handleShowEvents } from "../scoring/scoring";
 import { clickAt, createShow, fireworkPosition, updateShow } from "./show";
+import type { FireworkType } from "../fireworks/types";
 import { createGameState, type GameState } from "./state";
 import { venues } from "./venues";
-import { payPopsIntoWallet, startShowScoring } from "./wallet";
+import { settleScoredEvents, startScoringAtVenue } from "./wallet";
 
 const WIDTH = 1000;
 const HEIGHT = 800;
 const middle = () => 0.5;
 
+const sparkler: FireworkType = { ...basicRocket, id: "sparkler", price: 5 };
+
 /** Starts a show at the state's venue and pops its one firework. */
-function popOne(state: GameState, saves: GameState[] = []) {
+function popOne(state: GameState, saves: GameState[] = [], type = basicRocket) {
   const scoring = createScoring();
-  payPopsIntoWallet(scoring, state, (saved) => saves.push({ ...saved }));
-  startShowScoring(scoring, state);
-  const show = createShow([basicRocket]);
+  settleScoredEvents(scoring, state, (saved) => saves.push(structuredClone(saved)));
+  startScoringAtVenue(scoring, state);
+  const show = createShow([type]);
   updateShow(show, 1, middle);
   const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
   const popped = clickAt(show, at, WIDTH, HEIGHT);
@@ -50,12 +53,54 @@ describe("wallet", () => {
   it("pays nothing for a fizzle", () => {
     const state = createGameState();
     const scoring = createScoring();
-    payPopsIntoWallet(scoring, state);
+    settleScoredEvents(scoring, state);
     const show = createShow([basicRocket]);
     const events = [...updateShow(show, 1, middle), ...updateShow(show, 60, middle)];
     handleShowEvents(scoring, events, WIDTH, HEIGHT);
 
     expect(events.some((event) => event.kind === "fizzled")).toBe(true);
     expect(state.money).toBe(0);
+  });
+});
+
+describe("bought stock during a show", () => {
+  it("is used up and saved when a bought firework pops", () => {
+    const state = createGameState();
+    state.stock.sparkler = 2;
+    const saves: GameState[] = [];
+    popOne(state, saves, sparkler);
+
+    expect(state.stock).toEqual({ sparkler: 1 });
+    expect(saves[0].stock).toEqual({ sparkler: 1 });
+  });
+
+  it("is used up and saved when a bought firework fizzles", () => {
+    const state = createGameState();
+    state.stock.sparkler = 1;
+    const saves: GameState[] = [];
+    const scoring = createScoring();
+    settleScoredEvents(scoring, state, (saved) => saves.push(structuredClone(saved)));
+    const show = createShow([sparkler]);
+    handleShowEvents(scoring, updateShow(show, 60, middle), WIDTH, HEIGHT);
+
+    expect(state.stock).toEqual({});
+    expect(saves).toEqual([expect.objectContaining({ stock: {} })]);
+  });
+
+  it("stays in the save for fireworks that have not popped or fizzled yet", () => {
+    const state = createGameState();
+    state.stock.sparkler = 3;
+    const saves: GameState[] = [];
+    popOne(state, saves, sparkler);
+
+    // A reload now loads the last save: two sparklers still to use.
+    expect(saves.at(-1)!.stock).toEqual({ sparkler: 2 });
+  });
+
+  it("is not touched by the free rockets", () => {
+    const state = createGameState();
+    state.stock.sparkler = 1;
+    popOne(state, [], basicRocket);
+    expect(state.stock).toEqual({ sparkler: 1 });
   });
 });

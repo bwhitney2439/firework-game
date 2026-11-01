@@ -19,6 +19,16 @@ export interface Sound {
   cheer(strength: number): void;
 }
 
+/** Combo length that gives the loudest cheer for a single pop. */
+const COMBO_FOR_FULL_CHEER = 8;
+/** A single pop never cheers louder than this; the end of the show can. */
+const POP_CHEER_MAX = 0.6;
+
+/** Cheer strength for a pop: it grows with the combo, up to POP_CHEER_MAX. */
+export function popCheer(combo: number): number {
+  return Math.min(Math.max(combo, 0) / COMBO_FOR_FULL_CHEER, POP_CHEER_MAX);
+}
+
 /** The parts of AudioContext the sounds use, so tests can pass a fake. */
 export type AudioContextLike = Pick<
   AudioContext,
