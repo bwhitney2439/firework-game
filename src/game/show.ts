@@ -74,6 +74,10 @@ export function updateShow(
 ): ShowEvent[] {
   const events: ShowEvent[] = [];
 
+  // Age the fireworks already in the air first. A firework launched below
+  // starts at the time past its launch, which already counts this frame.
+  for (const firework of show.active) firework.age += dt;
+
   show.timeToNextLaunch -= dt;
   while (show.timeToNextLaunch <= 0 && show.queue.length > 0) {
     const type = show.queue.shift()!;
@@ -85,7 +89,6 @@ export function updateShow(
     show.timeToNextLaunch += LAUNCH_INTERVAL;
   }
 
-  for (const firework of show.active) firework.age += dt;
   show.active = show.active.filter((firework) => {
     if (flightProgress(firework) < 1) return true;
     show.fizzled++;

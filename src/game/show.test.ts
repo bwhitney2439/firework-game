@@ -33,6 +33,37 @@ describe("launching", () => {
     expect(show.queue).toHaveLength(0);
   });
 
+  it("starts a new firework at the time past its launch, not one frame more", () => {
+    const show = createShow([basicRocket]);
+    updateShow(show, 0.016, middle);
+    expect(show.active[0].age).toBeCloseTo(0.016, 10);
+  });
+
+  it("starts a new firework at the time past its launch on a big frame", () => {
+    const show = createShow([basicRocket]);
+    updateShow(show, 1.3, middle);
+    expect(show.active[0].age).toBeCloseTo(1.3, 10);
+  });
+
+  it("gives each firework launched in one frame its own time past launch", () => {
+    const show = createShow([basicRocket, basicRocket, basicRocket]);
+    updateShow(show, 2.5, middle);
+    expect(show.active.map((firework) => firework.age)).toEqual([
+      expect.closeTo(2.5, 10),
+      expect.closeTo(2.5 - LAUNCH_INTERVAL, 10),
+      expect.closeTo(2.5 - 2 * LAUNCH_INTERVAL, 10),
+    ]);
+  });
+
+  it("ages a firework launched on an earlier frame by the full frame", () => {
+    const show = createShow([basicRocket, basicRocket]);
+    updateShow(show, 0.25, middle);
+    updateShow(show, 0.5, middle);
+    expect(show.active.map((firework) => firework.age)).toEqual([
+      expect.closeTo(0.75, 10),
+    ]);
+  });
+
   it("does not change the stock it receives", () => {
     const stock = [basicRocket];
     updateShow(createShow(stock), 1, middle);
