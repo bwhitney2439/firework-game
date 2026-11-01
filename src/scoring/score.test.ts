@@ -131,11 +131,11 @@ describe("crowd multiplier", () => {
   });
 });
 
-describe("venue multiplier", () => {
+describe("money multiplier", () => {
   it("scales the money for a pop", () => {
     const plain = scorePop(createScore(), fireworkAt(0.5));
     const venue = scorePop(createScore(4), fireworkAt(0.5));
-    expect(venue.venueMultiplier).toBe(4);
+    expect(venue.moneyMultiplier).toBe(4);
     expect(venue.money).toBe(plain.money * 4);
   });
 });
@@ -173,16 +173,16 @@ describe("new show", () => {
     scorePop(score, fireworkAt(1));
     scorePop(score, fireworkAt(1));
     startShow(score);
-    expect(score.venueMultiplier).toBe(2);
+    expect(score.moneyMultiplier).toBe(2);
     expect(score.showMoney).toBe(0);
     expect(score.crowd).toBe(CROWD_START);
     expect(score.combo).toBe(0);
     expect(score.time).toBe(0);
   });
 
-  it("can change the venue multiplier", () => {
+  it("can change the money multiplier", () => {
     const score = createScore(2);
     startShow(score, 4);
-    expect(score.venueMultiplier).toBe(4);
+    expect(score.moneyMultiplier).toBe(4);
   });
 });

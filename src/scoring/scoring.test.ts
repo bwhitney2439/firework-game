@@ -79,7 +79,7 @@ describe("scoring the show", () => {
     startScoringShow(scoring, 4);
     expect(scoring.popups).toEqual([]);
     expect(scoring.score.showMoney).toBe(0);
-    expect(scoring.score.venueMultiplier).toBe(4);
+    expect(scoring.score.moneyMultiplier).toBe(4);
   });
 });
 

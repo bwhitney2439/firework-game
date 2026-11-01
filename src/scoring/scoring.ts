@@ -23,8 +23,8 @@ export interface Scoring {
   listeners: ((scored: ScoredEvent) => void)[];
 }
 
-export function createScoring(venueMultiplier = 1): Scoring {
-  return { score: createScore(venueMultiplier), popups: [], listeners: [] };
+export function createScoring(moneyMultiplier = 1): Scoring {
+  return { score: createScore(moneyMultiplier), popups: [], listeners: [] };
 }
 
 /**
@@ -75,14 +75,14 @@ export function updateScoring(scoring: Scoring, dt: number): void {
 }
 
 /**
- * Resets the crowd, combo and show money for a new show. Pass a venue
+ * Resets the crowd, combo and show money for a new show. Pass a money
  * multiplier to change it; otherwise the last one is kept.
  */
 export function startScoringShow(
   scoring: Scoring,
-  venueMultiplier?: number,
+  moneyMultiplier?: number,
 ): void {
-  startShow(scoring.score, venueMultiplier);
+  startShow(scoring.score, moneyMultiplier);
   scoring.popups = [];
 }
 

@@ -30,7 +30,7 @@ export interface ScoreState {
    * Extra money factor set from outside, for example by the venue.
    * It carries over to the next show.
    */
-  venueMultiplier: number;
+  moneyMultiplier: number;
   /** Crowd meter from 0 to 1. */
   crowd: number;
   /** Pops in the current combo. Zero when there is no combo. */
@@ -51,7 +51,7 @@ export interface PopScore {
   speedFactor: number;
   comboFactor: number;
   crowdMultiplier: number;
-  venueMultiplier: number;
+  moneyMultiplier: number;
   combo: number;
   /** Crowd meter after the pop. */
   crowd: number;
@@ -68,10 +68,10 @@ export interface FizzleScore {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-export function createScore(venueMultiplier = 1): ScoreState {
+export function createScore(moneyMultiplier = 1): ScoreState {
   return {
     showMoney: 0,
-    venueMultiplier,
+    moneyMultiplier,
     crowd: CROWD_START,
     combo: 0,
     bestCombo: 0,
@@ -83,9 +83,9 @@ export function createScore(venueMultiplier = 1): ScoreState {
 /** Starts a new show: the crowd, combo and show money start again. */
 export function startShow(
   score: ScoreState,
-  venueMultiplier = score.venueMultiplier,
+  moneyMultiplier = score.moneyMultiplier,
 ): void {
-  Object.assign(score, createScore(venueMultiplier));
+  Object.assign(score, createScore(moneyMultiplier));
 }
 
 /** Moves the scoring clock forward by dt seconds. */
@@ -140,7 +140,7 @@ export function scorePop(score: ScoreState, firework: Firework): PopScore {
     comboFactor: comboFactor(score.combo),
     // The crowd as it was when the firework was popped.
     crowdMultiplier: crowdMultiplier(score.crowd),
-    venueMultiplier: score.venueMultiplier,
+    moneyMultiplier: score.moneyMultiplier,
   };
   const money = Math.round(
     firework.type.baseValue *
@@ -149,7 +149,7 @@ export function scorePop(score: ScoreState, firework: Firework): PopScore {
       factors.speedFactor *
       factors.comboFactor *
       factors.crowdMultiplier *
-      factors.venueMultiplier,
+      factors.moneyMultiplier,
   );
   score.showMoney += money;
 
