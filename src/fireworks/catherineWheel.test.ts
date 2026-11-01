@@ -17,9 +17,8 @@ const peakAge = 1 / (4 * WOBBLE_FREQUENCY);
 /** One firework in the air at the widest point of its wobble. */
 function showAtPeak() {
   const show = createShow([catherineWheel]);
-  // The first update both launches the firework and ages it, so it ends up
-  // twice as old as the step.
-  updateShow(show, peakAge / 2, middle);
+  // The first update launches the firework at the time past its launch.
+  updateShow(show, peakAge, middle);
   expect(show.active[0].age).toBeCloseTo(peakAge);
   return show;
 }
