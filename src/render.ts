@@ -2,7 +2,6 @@ import {
   BURST_DURATION,
   type Show,
   fireworkPosition,
-  isShowOver,
 } from "./game/show";
 
 export function render(
@@ -30,12 +29,4 @@ export function render(
     16,
     30,
   );
-
-  if (isShowOver(show)) {
-    ctx.textAlign = "center";
-    ctx.font = "32px system-ui, sans-serif";
-    ctx.fillText("Show over", width / 2, height / 2);
-    ctx.font = "18px system-ui, sans-serif";
-    ctx.fillText("Click to start the next show", width / 2, height / 2 + 36);
-  }
 }
