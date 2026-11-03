@@ -1,16 +1,11 @@
 import { basicRocket } from "../fireworks/basicRocket";
 import type { Point } from "../fireworks/types";
+import { drawBonfire, hash } from "./scenery";
 
 /** Seconds each decorative burst on the title screen takes. */
 const BURST_CYCLE = 2.4;
 /** Decorative bursts on screen at once, each on its own offset cycle. */
 const BURST_SLOTS = 3;
-
-/** A repeatable pseudo-random number from 0 to 1 for a seed. */
-function hash(seed: number): number {
-  const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
-  return x - Math.floor(x);
-}
 
 /**
  * Where decorative burst `slot` is at `time`, and how far through it is.
@@ -32,43 +27,6 @@ export function titleBurst(
     },
     progress: shifted - cycle,
   };
-}
-
-function drawBonfire(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  ground: number,
-  time: number,
-): void {
-  // Logs.
-  ctx.strokeStyle = "#5a3a22";
-  ctx.lineWidth = 10;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(x - 50, ground);
-  ctx.lineTo(x + 30, ground - 30);
-  ctx.moveTo(x + 50, ground);
-  ctx.lineTo(x - 30, ground - 30);
-  ctx.stroke();
-
-  // Flames: three layers that flicker at different speeds.
-  const layers = [
-    { colour: "#e2572b", size: 46, speed: 7 },
-    { colour: "#ff9f1c", size: 32, speed: 11 },
-    { colour: "#ffe066", size: 18, speed: 17 },
-  ];
-  for (const { colour, size, speed } of layers) {
-    const flicker = 1 + Math.sin(time * speed) * 0.12;
-    const tall = size * 2.1 * flicker;
-    ctx.fillStyle = colour;
-    ctx.beginPath();
-    ctx.moveTo(x - size, ground - 12);
-    const shoulder = ground - tall * 0.6;
-    ctx.quadraticCurveTo(x - size * 0.6, shoulder, x, ground - tall);
-    ctx.quadraticCurveTo(x + size * 0.6, shoulder, x + size, ground - 12);
-    ctx.closePath();
-    ctx.fill();
-  }
 }
 
 /** Draws the title screen. `time` is in seconds and drives the animation. */
