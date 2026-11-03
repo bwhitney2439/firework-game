@@ -1,5 +1,10 @@
 # Bonfire Night Popper: new feature ideas
 
+**Approved 2026-11-03 by Cody: all open-question defaults accepted; idea 11 (set list) skipped. Venue prices are not retuned yet.**
+
+The decisions are listed under "Open questions" in
+[tasks/plan-features.md](tasks/plan-features.md).
+
 Spec only. No feature code is in this change. The build tasks are in
 [tasks/plan-features.md](tasks/plan-features.md).
 
@@ -431,4 +436,4 @@ your biggest shells.
 every busy file, and it takes the player away from the reflex game, which is
 the point of the game.
 
-**Pick:** no. Idea 3 (Requests) gives some planning for much less work.
+**Pick:** no. Idea 3 (Requests) gives some planning for much less work. Skipped (approved 2026-11-03).

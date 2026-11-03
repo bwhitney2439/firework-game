@@ -1,5 +1,7 @@
 # Plan: new features
 
+**Approved 2026-11-03 by Cody: all open-question defaults accepted; idea 11 (set list) skipped. Venue prices are not retuned yet.**
+
 One build task per idea in [SPEC-features.md](../SPEC-features.md). Tasks
 in the same wave share no files and can run at the same time. Start each
 wave from master after the wave before it is merged.
@@ -294,28 +296,30 @@ hurts, and ignoring them is free.
 
 ---
 
-## Open questions (each has a default)
+## Open questions (all decided)
 
-1. **Which ideas go first?** Default: wave 1 (T1 to T4), four agents at
+**Approved 2026-11-03 by Cody: all open-question defaults accepted; idea 11 (set list) skipped. Venue prices are not retuned yet.**
+
+1. **Which ideas go first?** Decided (default accepted): wave 1 (T1 to T4), four agents at
    once.
-2. **How harsh should a missed click be?** Default: lose 0.03 crowd and
+2. **How harsh should a missed click be?** Decided (default accepted): lose 0.03 crowd and
    end the combo, with no money lost.
 3. **Should the economy be retuned?** One good Village green show pays for
-   the City stadium. Default: no price changes now; T9's star gate fixes
+   the City stadium. Decided (default accepted): no price changes now; T9's star gate fixes
    the worst of it. Look again after wave 1 with Requests' rewards in.
-4. **Do we care about phones?** Default: yes, a bit. T5's tap-to-mute is in
+4. **Do we care about phones?** Decided (default accepted): yes, a bit. T5's tap-to-mute is in
    wave 2 either way; T8's full phone layout stays "maybe" until Cody says.
-5. **Should sound and flash settings be remembered?** Default: yes, in
+5. **Should sound and flash settings be remembered?** Decided (default accepted): yes, in
    their own localStorage key (not in `GameState`), so the save format
    doesn't change.
-6. **Should there be a setting to turn off the flash (T6)?** Default: no
+6. **Should there be a setting to turn off the flash (T6)?** Decided (default accepted): no
    setting; keep the flash soft (alpha ≤ 0.25, no strobing).
 7. **Lanterns or something else as the "don't pop" target (T10)?**
-   Default: sky lanterns, with the line "Don't pop the lanterns!" on the
+   Decided (default accepted): sky lanterns, with the line "Don't pop the lanterns!" on the
    title screen the first time.
 8. **Can the Crossette's stars be popped for money, or only for combo?**
-   Default: for money, at 1× a basic rocket each, plus the combo.
+   Decided (default accepted): for money, at 1× a basic rocket each, plus the combo.
 9. **Should missing a Crossette star or leaving a lantern count against a
-   "Perfect show"?** Default: no. Perfect means every launched firework
+   "Perfect show"?** Decided (default accepted): no. Perfect means every launched firework
    from your stock was popped.
-10. **The set list (idea 11)?** Default: not planned.
+10. **The set list (idea 11)?** Decided (default accepted): not planned.
