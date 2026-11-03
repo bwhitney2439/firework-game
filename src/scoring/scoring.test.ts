@@ -5,12 +5,20 @@ import { HUD_BOTTOM } from "./hud";
 import { popupAnchor, popupPosition, updatePopups } from "./popups";
 import {
   createScoring,
+  handleMiss,
+  handleShowClick,
   handleShowEvents,
   onScored,
   startScoringShow,
   updateScoring,
 } from "./scoring";
-import { COUNTS_LINE_BOTTOM, POPUP_DURATION, POPUP_TEXT_HEIGHT } from "./tuning";
+import {
+  COUNTS_LINE_BOTTOM,
+  MISS_CROWD_LOSS,
+  POPUP_DURATION,
+  POPUP_TEXT_HEIGHT,
+  PUFF_DURATION,
+} from "./tuning";
 
 const WIDTH = 1000;
 const HEIGHT = 800;
@@ -96,6 +104,81 @@ describe("scoring the show", () => {
     expect(scoring.score.bestCombo).toBe(2);
     startScoringShow(scoring);
     expect(scoring.score.bestCombo).toBe(0);
+  });
+});
+
+describe("missed clicks", () => {
+  it("cost crowd, show a Whiff and a puff, and tell no listeners", () => {
+    const scoring = createScoring();
+    const heard: string[] = [];
+    onScored(scoring, (scored) => heard.push(scored.kind));
+    const crowd = scoring.score.crowd;
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+
+    expect(scoring.score.crowd).toBeCloseTo(crowd - MISS_CROWD_LOSS);
+    expect(scoring.score.showMoney).toBe(0);
+    expect(scoring.popups.map((popup) => [popup.text, popup.style])).toEqual([["Whiff", "groan"]]);
+    expect(scoring.puffs).toEqual([{ at: { x: 300, y: 400 }, age: 0 }]);
+    expect(heard).toEqual([]);
+  });
+
+  it("keep a Whiff near the top below the counts line", () => {
+    const scoring = createScoring();
+    handleMiss(scoring, { x: 100, y: 5 }, WIDTH);
+    expect(highestTop(scoring.popups[0])).toBeGreaterThan(COUNTS_LINE_BOTTOM);
+  });
+
+  it("end the combo and leave the show money alone", () => {
+    const show = createShow([basicRocket, basicRocket]);
+    updateShow(show, 1, middle);
+    updateShow(show, 1, middle);
+    const scoring = createScoring();
+    const [first, second] = show.active;
+    handleShowClick(scoring, show, fireworkPosition(first, WIDTH, HEIGHT), WIDTH, HEIGHT);
+    const money = scoring.score.showMoney;
+    expect(handleShowClick(scoring, show, { x: 0, y: 0 }, WIDTH, HEIGHT).kind).toBe("missed");
+    expect(scoring.score.showMoney).toBe(money);
+    const result = handleShowClick(scoring, show, fireworkPosition(second, WIDTH, HEIGHT), WIDTH, HEIGHT);
+    expect(result.kind).toBe("popped");
+    expect(scoring.score.combo).toBe(1);
+  });
+
+  it("leave puffs on screen only briefly, and not into the next show", () => {
+    const scoring = createScoring();
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+    updateScoring(scoring, PUFF_DURATION / 2);
+    expect(scoring.puffs).toHaveLength(1);
+    updateScoring(scoring, PUFF_DURATION);
+    expect(scoring.puffs).toEqual([]);
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+    startScoringShow(scoring);
+    expect(scoring.puffs).toEqual([]);
+  });
+
+  it("are never counted once the show is over or between shows", () => {
+    const scoring = createScoring();
+    const before = { ...scoring.score };
+    // Title and shop before the first show: the show is empty.
+    expect(handleShowClick(scoring, createShow([]), { x: 10, y: 10 }, WIDTH, HEIGHT).kind).toBe("ignored");
+    // Summary and shop after a show: everything has popped or fizzled.
+    const show = flyingShow();
+    updateShow(show, 10, middle);
+    expect(handleShowClick(scoring, show, { x: 10, y: 10 }, WIDTH, HEIGHT).kind).toBe("ignored");
+    expect(scoring.score).toEqual(before);
+    expect(scoring.popups).toEqual([]);
+    expect(scoring.puffs).toEqual([]);
+  });
+
+  it("let one careful click per firework keep the combo going", () => {
+    const show = createShow([basicRocket, basicRocket, basicRocket]);
+    const scoring = createScoring();
+    for (let i = 0; i < 3; i++) {
+      updateShow(show, 1, middle);
+      updateScoring(scoring, 1);
+      const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+      expect(handleShowClick(scoring, show, at, WIDTH, HEIGHT).kind).toBe("popped");
+    }
+    expect(scoring.score.combo).toBe(3);
   });
 });
 

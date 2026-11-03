@@ -1,6 +1,6 @@
 import { fireworkTypes } from "./fireworks/registry";
 import { loadGame, saveGame } from "./game/save";
-import { clickAt, createShow, isShowOver } from "./game/show";
+import { createShow } from "./game/show";
 import { currentVenue, fireworksForShow } from "./game/state";
 import { settleScoredEvents, startScoringAtVenue } from "./game/wallet";
 import { createSound, popCheer } from "./polish/sound";
@@ -18,6 +18,7 @@ import { render } from "./render";
 import {
   createScoring,
   drawScoring,
+  handleShowClick,
   handleShowEvents,
   updateScoring,
 } from "./scoring/scoring";
@@ -107,20 +108,19 @@ canvas.addEventListener("pointerdown", (event) => {
     if (canContinue(game.phaseTime)) afterSummary();
     return;
   }
-  if (isShowOver(game.show)) return;
-  const popped = clickAt(
+  const result = handleShowClick(
+    game.scoring,
     game.show,
     click,
     canvas.clientWidth,
     canvas.clientHeight,
   );
-  if (!popped) {
+  if (result.kind === "missed") {
     recordMiss(game.stats);
-    return;
+  } else if (result.kind === "popped") {
+    recordEvent(game.stats, result.event);
+    for (const event of result.scored) playEvent(event);
   }
-  const scored = handleShowEvents(game.scoring, [popped], canvas.clientWidth, canvas.clientHeight);
-  recordEvent(game.stats, popped);
-  for (const event of scored) playEvent(event);
 });
 
 window.addEventListener("keydown", (event) => {
