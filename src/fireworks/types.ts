@@ -19,8 +19,14 @@ export interface FireworkType {
   riseSpeed: number;
   /** Click distance from the firework's centre, in pixels. */
   hitRadius: number;
-  /** Sideways offset in pixels at a given age. This sets the flight path. */
+  /**
+   * Sideways offset in pixels at a given age. This sets the flight path.
+   * For a star split off another firework, it is the distance in pixels
+   * from the pop point along the star's heading instead.
+   */
   pathOffset(age: number): number;
+  /** Stars that fly out when this firework is popped: their type and how many. */
+  split?: { type: FireworkType; count: number };
   drawRising(ctx: CanvasRenderingContext2D, at: Point, age: number): void;
   /** Draws the burst. Progress runs from 0 to 1. */
   drawBurst(ctx: CanvasRenderingContext2D, at: Point, progress: number): void;
