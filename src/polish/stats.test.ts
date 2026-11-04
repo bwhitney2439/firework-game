@@ -10,8 +10,11 @@ import {
   fireworkPosition,
   isAvoid,
 } from "../game/show";
+import { createScoring, handleShowClick } from "../scoring/scoring";
 import { LANTERN_FIRST_DELAY } from "../scoring/tuning";
 import {
+  PERFECT_MAX_MISSES_PER_LAUNCH,
+  SPECTACULAR_MAX_MISSES_PER_LAUNCH,
   SUMMARY_DELAY,
   createStats,
   isSummaryDue,
@@ -112,12 +115,80 @@ describe("summary", () => {
   });
 
   it("rates the show by hit rate", () => {
-    expect(rate(1, 10).title).toBe("Perfect show!");
-    expect(rate(0.8, 10).title).toBe("Spectacular!");
-    expect(rate(0.5, 10).title).toBe("Crowd pleaser");
-    expect(rate(0.1, 10).title).toBe("A damp squib");
-    expect(rate(0, 10).title).toBe("Total washout");
-    expect(rate(0, 0).title).toBe("No show tonight");
+    expect(rate(1, 10, 0).title).toBe("Perfect show!");
+    expect(rate(0.8, 10, 0).title).toBe("Spectacular!");
+    expect(rate(0.5, 10, 0).title).toBe("Crowd pleaser");
+    expect(rate(0.1, 10, 0).title).toBe("A damp squib");
+    expect(rate(0, 10, 0).title).toBe("Total washout");
+    expect(rate(0, 0, 0).title).toBe("No show tonight");
+  });
+});
+
+describe("rating missed clicks", () => {
+  it("still rates careful play with a few misses as perfect", () => {
+    expect(rate(1, 10, 10 * PERFECT_MAX_MISSES_PER_LAUNCH).title).toBe("Perfect show!");
+    expect(rate(1, 10, 1).title).toBe("Perfect show!");
+  });
+
+  it("drops a perfect hit rate to spectacular past the perfect miss limit", () => {
+    expect(rate(1, 10, 10 * PERFECT_MAX_MISSES_PER_LAUNCH + 1).title).toBe("Spectacular!");
+    expect(rate(1, 10, 10 * SPECTACULAR_MAX_MISSES_PER_LAUNCH).title).toBe("Spectacular!");
+  });
+
+  it("rates mashing with a perfect hit rate no higher than a crowd pleaser", () => {
+    expect(rate(1, 10, 10 * SPECTACULAR_MAX_MISSES_PER_LAUNCH + 1).title).toBe("Crowd pleaser");
+    expect(rate(1, 10, 200).title).toBe("Crowd pleaser");
+    expect(rate(0.9, 10, 200).title).toBe("Crowd pleaser");
+  });
+
+  it("leaves the lower ratings to the hit rate", () => {
+    expect(rate(0.1, 10, 200).title).toBe("A damp squib");
+    expect(rate(0, 10, 200).title).toBe("Total washout");
+    expect(rate(0, 0, 200).title).toBe("No show tonight");
+  });
+
+  /**
+   * Plays a show of rockets through handleShowClick, the way main.ts does,
+   * popping every rocket. Each step also clicks `stray` times on empty sky.
+   */
+  function playClicking(count: number, strayPerStep: number) {
+    const show = createShow(Array.from({ length: count }, () => basicRocket));
+    const stats = createStats();
+    const scoring = createScoring();
+    const click = (at: { x: number; y: number }) => {
+      const result = handleShowClick(scoring, show, at, 1000, 800);
+      if (result.kind === "missed") recordMiss(stats);
+      else if (result.kind === "popped") recordEvent(stats, result.event);
+    };
+    for (let t = 0; t < 40; t += 0.1) {
+      stepShow(show, stats, 0.1, middle);
+      for (let i = 0; i < strayPerStep; i++) click({ x: 10 + i, y: 10 });
+      for (const firework of [...show.active]) click(fireworkPosition(firework, 1000, 800));
+    }
+    return summarize(stats, noScore);
+  }
+
+  it("doesn't rate a mashing bot that pops everything as perfect", () => {
+    const summary = playClicking(10, 3);
+    expect(summary.hitRate).toBe(1);
+    expect(summary.missedClicks).toBeGreaterThan(10);
+    expect(summary.rating.title).not.toBe("Perfect show!");
+    expect(summary.rating.title).toBe("Crowd pleaser");
+  });
+
+  it("rates careful play that pops everything as perfect", () => {
+    const summary = playClicking(10, 0);
+    expect(summary.hitRate).toBe(1);
+    expect(summary.missedClicks).toBe(0);
+    expect(summary.rating.title).toBe("Perfect show!");
+  });
+
+  it("doesn't count clicks after the show as misses", () => {
+    const show = createShow([]);
+    const stats = createStats();
+    const result = handleShowClick(createScoring(), show, { x: 10, y: 10 }, 1000, 800);
+    if (result.kind === "missed") recordMiss(stats);
+    expect(stats.missedClicks).toBe(0);
   });
 });
 
