@@ -7,8 +7,12 @@
 export interface Sound {
   /** Creates or resumes the audio context. Call it from a user gesture. */
   unlock(): void;
+  /** True at volume 0. */
   isMuted(): boolean;
+  /** Muting goes to volume 0; unmuting goes back to the last volume heard. */
   setMuted(muted: boolean): void;
+  volume(): VolumeLevel;
+  setVolume(level: VolumeLevel): void;
   /** A rising whoosh as a firework leaves the ground. */
   launch(): void;
   /** A bang with a crackle for a popped firework. */
@@ -17,6 +21,61 @@ export interface Sound {
   fizzle(): void;
   /** Crowd cheering. Strength runs from 0 (polite) to 1 (wild). */
   cheer(strength: number): void;
+}
+
+/** Sound volume steps: 0 is off (muted), 1 is low and 2 is high. */
+export type VolumeLevel = 0 | 1 | 2;
+
+/** Output gain for each volume level. High is the game's original volume. */
+export const VOLUME_GAINS: Record<VolumeLevel, number> = [0, 0.2, 0.5];
+
+/** Names for the volume levels, as the pause menu shows them. */
+export const VOLUME_NAMES: Record<VolumeLevel, string> = ["off", "low", "high"];
+
+/** The level after `level` when the Sound button is pressed: off, low, high, off. */
+export function nextVolume(level: VolumeLevel): VolumeLevel {
+  return ((level + 1) % 3) as VolumeLevel;
+}
+
+/**
+ * localStorage key for the volume. It is kept out of the game save so the
+ * save format doesn't change.
+ */
+export const SOUND_KEY = "bonfire-night-popper/sound";
+
+/** The part of localStorage the volume setting uses, so tests can pass a fake. */
+export type SoundStorage = Pick<Storage, "getItem" | "setItem">;
+
+function defaultStorage(): SoundStorage | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The remembered volume, or high when there is none or it can't be read. */
+export function loadVolume(
+  storage: SoundStorage | null = defaultStorage(),
+): VolumeLevel {
+  try {
+    const value = storage?.getItem(SOUND_KEY);
+    return value === "0" || value === "1" ? (Number(value) as VolumeLevel) : 2;
+  } catch {
+    return 2;
+  }
+}
+
+/** Remembers the volume. Does nothing if storage is full or blocked. */
+export function saveVolume(
+  level: VolumeLevel,
+  storage: SoundStorage | null = defaultStorage(),
+): void {
+  try {
+    storage?.setItem(SOUND_KEY, String(level));
+  } catch {
+    // Private mode or a full quota: the setting just isn't remembered.
+  }
 }
 
 /** Combo length that gives the loudest cheer for a single pop. */
@@ -44,7 +103,6 @@ export type AudioContextLike = Pick<
   | "createBuffer"
 >;
 
-const MASTER_VOLUME = 0.5;
 const NOISE_SECONDS = 3;
 
 function browserContext(): AudioContextLike | null {
@@ -58,15 +116,28 @@ function browserContext(): AudioContextLike | null {
 export function createSound(
   makeContext: () => AudioContextLike | null = browserContext,
   random: () => number = Math.random,
+  startVolume: VolumeLevel = 2,
 ): Sound {
   let ctx: AudioContextLike | null = null;
   let master: GainNode | null = null;
   let noise: AudioBuffer | null = null;
-  let muted = false;
+  let level: VolumeLevel = startVolume;
+  /** The volume unmuting goes back to. */
+  let unmutedLevel: VolumeLevel = startVolume === 0 ? 2 : startVolume;
+
+  function applyVolume(): void {
+    if (master) master.gain.value = VOLUME_GAINS[level];
+  }
+
+  function setVolume(value: VolumeLevel): void {
+    level = value;
+    if (value !== 0) unmutedLevel = value;
+    applyVolume();
+  }
 
   /** The context and output to play into, or null when nothing should play. */
   function output(): { ctx: AudioContextLike; out: GainNode } | null {
-    if (muted || !ctx || !master || ctx.state !== "running") return null;
+    if (level === 0 || !ctx || !master || ctx.state !== "running") return null;
     return { ctx, out: master };
   }
 
@@ -118,17 +189,21 @@ export function createSound(
         ctx = makeContext();
         if (!ctx) return;
         master = ctx.createGain();
-        master.gain.value = MASTER_VOLUME;
+        applyVolume();
         master.connect(ctx.destination);
       }
       if (ctx.state === "suspended") void ctx.resume();
     },
 
-    isMuted: () => muted,
+    isMuted: () => level === 0,
 
-    setMuted(value) {
-      muted = value;
+    setMuted(muted) {
+      setVolume(muted ? 0 : unmutedLevel);
     },
+
+    volume: () => level,
+
+    setVolume,
 
     launch() {
       const o = output();
