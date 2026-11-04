@@ -9,7 +9,12 @@ import {
   POPUP_TEXT_HEIGHT,
 } from "./tuning";
 
-export type PopupStyle = "cheer" | "money" | "groan" | "gold";
+/**
+ * "bigMoney" is the money pop-up for a big pop. "banner" is the big combo
+ * banner across the middle (see src/polish/juice.ts); it is never a floating
+ * pop-up.
+ */
+export type PopupStyle = "cheer" | "money" | "bigMoney" | "groan" | "gold" | "banner";
 
 /** Floating text over a burst, such as "Aah!" or "+£12". */
 export interface Popup {
@@ -55,23 +60,43 @@ export function popupPosition(popup: Popup): Point {
 const STYLES: Record<PopupStyle, { font: string; color: string }> = {
   cheer: { font: "bold 26px system-ui, sans-serif", color: "#fff3b0" },
   money: { font: "bold 20px system-ui, sans-serif", color: "#7ee081" },
+  bigMoney: { font: "bold 26px system-ui, sans-serif", color: "#9bf59e" },
   groan: { font: "italic 20px system-ui, sans-serif", color: "#9aa3c7" },
   gold: { font: "bold 24px system-ui, sans-serif", color: "#ffd166" },
+  banner: { font: "bold 64px system-ui, sans-serif", color: "#ffc94d" },
 };
+
+/** The CSS font for a pop-up style. */
+export function popupFont(style: PopupStyle): string {
+  return STYLES[style].font;
+}
+
+/**
+ * Draws text in a pop-up style, outlined so it reads over a bright burst.
+ * The caller sets the alignment and opacity.
+ */
+export function drawPopupText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  style: PopupStyle,
+  at: Point,
+): void {
+  const look = STYLES[style];
+  ctx.font = look.font;
+  ctx.lineWidth = style === "banner" ? 8 : 4;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#0b1026";
+  ctx.strokeText(text, at.x, at.y);
+  ctx.fillStyle = look.color;
+  ctx.fillText(text, at.x, at.y);
+}
 
 export function drawPopups(ctx: CanvasRenderingContext2D, popups: Popup[]): void {
   ctx.save();
   ctx.textAlign = "center";
   for (const popup of popups) {
-    const style = STYLES[popup.style];
-    const at = popupPosition(popup);
     ctx.globalAlpha = Math.max(0, 1 - popup.age / POPUP_DURATION);
-    ctx.font = style.font;
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#0b1026";
-    ctx.strokeText(popup.text, at.x, at.y);
-    ctx.fillStyle = style.color;
-    ctx.fillText(popup.text, at.x, at.y);
+    drawPopupText(ctx, popup.text, popup.style, popupPosition(popup));
   }
   ctx.restore();
 }
