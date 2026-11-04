@@ -15,6 +15,13 @@ export interface Firework {
   launchX: number;
   /** Seconds since launch. */
   age: number;
+  /**
+   * Where a star split off another firework starts, in canvas pixels.
+   * Fireworks from the stock have none and rise from the ground.
+   */
+  origin?: Point;
+  /** Direction a star flies out in, in radians. Only used with `origin`. */
+  heading?: number;
 }
 
 export interface Burst {
@@ -54,11 +61,24 @@ export function flightProgress(firework: Firework): number {
   return firework.age * firework.type.riseSpeed;
 }
 
+/** True for a star split off another firework, which isn't from the stock. */
+export function isStar(firework: Firework): boolean {
+  return firework.origin !== undefined;
+}
+
 export function fireworkPosition(
   firework: Firework,
   width: number,
   height: number,
 ): Point {
+  if (firework.origin) {
+    const distance = firework.type.pathOffset(firework.age);
+    const heading = firework.heading ?? 0;
+    return {
+      x: firework.origin.x + Math.cos(heading) * distance,
+      y: firework.origin.y + Math.sin(heading) * distance,
+    };
+  }
   const climb = height * (1 - TOP_MARGIN);
   return {
     x: firework.launchX * width + firework.type.pathOffset(firework.age),
@@ -91,6 +111,8 @@ export function updateShow(
 
   show.active = show.active.filter((firework) => {
     if (flightProgress(firework) < 1) return true;
+    // A star that runs out just fades: no fizzle and no crowd loss.
+    if (isStar(firework)) return false;
     show.fizzled++;
     events.push({ kind: "fizzled", firework });
     return false;
@@ -126,8 +148,29 @@ export function clickAt(
 
   show.active = show.active.filter((firework) => firework !== target);
   show.bursts.push({ type: target.type, at: targetAt, age: 0 });
-  show.popped++;
+  if (!isStar(target)) show.popped++;
+  if (target.type.split) splitAt(show, target.type.split, targetAt);
   return { kind: "popped", firework: target, at: targetAt };
+}
+
+/**
+ * Adds a split's stars at the pop point, spread out evenly. With four
+ * stars they fly up, right, down and left, in a cross.
+ */
+function splitAt(
+  show: Show,
+  split: { type: FireworkType; count: number },
+  at: Point,
+): void {
+  for (let i = 0; i < split.count; i++) {
+    show.active.push({
+      type: split.type,
+      launchX: 0,
+      age: 0,
+      origin: { ...at },
+      heading: -Math.PI / 2 + (i / split.count) * Math.PI * 2,
+    });
+  }
 }
 
 /** The show ends when every firework was launched and none is still in the air. */

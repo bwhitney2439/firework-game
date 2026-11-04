@@ -3,6 +3,7 @@ import {
   type Show,
   fireworkPosition,
 } from "./game/show";
+import { crowdExcitement, drawScenery } from "./polish/scenery";
 
 export function render(
   ctx: CanvasRenderingContext2D,
@@ -10,8 +11,7 @@ export function render(
   width: number,
   height: number,
 ): void {
-  ctx.fillStyle = "#0b1026";
-  ctx.fillRect(0, 0, width, height);
+  drawScenery(ctx, width, height, performance.now() / 1000, crowdExcitement(show.bursts));
 
   for (const firework of show.active) {
     const at = fireworkPosition(firework, width, height);
