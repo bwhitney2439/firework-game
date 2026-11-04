@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createStats, summarize } from "./stats";
-import { canContinue, summaryRows } from "./summaryScreen";
+import { canContinue, summaryLayout, summaryRows } from "./summaryScreen";
 
 describe("summary screen", () => {
   it("lists the counts, the hit rate as a percentage and the show money", () => {
@@ -26,5 +26,64 @@ describe("summary screen", () => {
   it("ignores clicks until it has been open a moment", () => {
     expect(canContinue(0.1)).toBe(false);
     expect(canContinue(1)).toBe(true);
+  });
+});
+
+describe("summary layout", () => {
+  /** The panel as it ends up on screen, after any shrinking. */
+  function onScreen(width: number, height: number, lines = 1) {
+    const layout = summaryLayout(width, height, 7, lines);
+    const scaled = (value: number, middle: number) => middle + (value - middle) * layout.scale;
+    return {
+      left: scaled(layout.left, width / 2),
+      right: scaled(layout.left + layout.width, width / 2),
+      top: scaled(layout.top, height / 2),
+      bottom: scaled(layout.top + layout.height, height / 2),
+    };
+  }
+
+  for (const [width, height] of [
+    [390, 700],
+    [390, 844],
+    [1280, 720],
+    [844, 390],
+  ]) {
+    it(`fits on a ${width}×${height} screen`, () => {
+      for (const lines of [1, 2]) {
+        const panel = onScreen(width, height, lines);
+        expect(panel.left).toBeGreaterThanOrEqual(0);
+        expect(panel.top).toBeGreaterThanOrEqual(0);
+        expect(panel.right).toBeLessThanOrEqual(width);
+        expect(panel.bottom).toBeLessThanOrEqual(height);
+      }
+    });
+  }
+
+  it("keeps the desktop summary as it was", () => {
+    expect(summaryLayout(1280, 720, 7)).toMatchObject({
+      left: 430,
+      top: 140,
+      width: 420,
+      height: 440,
+      pad: 40,
+      titleSize: 34,
+      rowsTop: 306,
+      scale: 1,
+    });
+  });
+
+  it("uses smaller text on a phone", () => {
+    const phone = summaryLayout(390, 844, 7);
+    const desktop = summaryLayout(1280, 720, 7);
+    expect(phone.titleSize).toBeLessThan(desktop.titleSize);
+    expect(phone.pad).toBeLessThan(desktop.pad);
+    expect(phone.width).toBe(358);
+  });
+
+  it("moves the rows down when the rating line wraps", () => {
+    const one = summaryLayout(390, 844, 7, 1);
+    const two = summaryLayout(390, 844, 7, 2);
+    expect(two.rowsTop).toBeGreaterThan(one.rowsTop);
+    expect(two.height).toBeGreaterThan(one.height);
   });
 });
