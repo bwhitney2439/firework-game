@@ -123,7 +123,7 @@ describe("missed clicks", () => {
     const heard: string[] = [];
     onScored(scoring, (scored) => heard.push(scored.kind));
     const crowd = scoring.score.crowd;
-    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH, HEIGHT);
 
     expect(scoring.score.crowd).toBeCloseTo(crowd - MISS_CROWD_LOSS);
     expect(scoring.score.showMoney).toBe(0);
@@ -134,7 +134,7 @@ describe("missed clicks", () => {
 
   it("keep a Whiff near the top below the counts line", () => {
     const scoring = createScoring();
-    handleMiss(scoring, { x: 100, y: 5 }, WIDTH);
+    handleMiss(scoring, { x: 100, y: 5 }, WIDTH, HEIGHT);
     expect(highestTop(scoring.popups[0])).toBeGreaterThan(COUNTS_LINE_BOTTOM);
   });
 
@@ -155,12 +155,12 @@ describe("missed clicks", () => {
 
   it("leave puffs on screen only briefly, and not into the next show", () => {
     const scoring = createScoring();
-    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH, HEIGHT);
     updateScoring(scoring, PUFF_DURATION / 2);
     expect(scoring.puffs).toHaveLength(1);
     updateScoring(scoring, PUFF_DURATION);
     expect(scoring.puffs).toEqual([]);
-    handleMiss(scoring, { x: 300, y: 400 }, WIDTH);
+    handleMiss(scoring, { x: 300, y: 400 }, WIDTH, HEIGHT);
     startScoringShow(scoring);
     expect(scoring.puffs).toEqual([]);
   });
