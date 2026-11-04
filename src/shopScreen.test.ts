@@ -7,10 +7,12 @@ import { venues } from "./game/venues";
 import {
   type Box,
   type ShopButton,
+  bestsText,
   requestCardBox,
   shopButtons,
   shopClick,
   shopLayout,
+  upgradeReason,
 } from "./shopScreen";
 
 const WIDTH = 1000;
@@ -69,9 +71,39 @@ describe("shop screen", () => {
 
   it("upgrades the venue", () => {
     const state = { ...createGameState(), money: 1000 };
+    state.records["back-garden"] = { stars: 2, bestMoney: 90, bestCombo: 6 };
     expect(find(state, "upgrade").label).toBe("Move to Village green: £300");
+    expect(upgradeReason(state)).toBe("");
     shopClick(state, types, centre(find(state, "upgrade")), WIDTH, HEIGHT);
     expect(state.venueId).toBe(venues[1].id);
+  });
+
+  it("won't move up without the stars, and says why", () => {
+    const state = { ...createGameState(), money: 100_000 };
+    state.records["back-garden"] = { stars: 1, bestMoney: 900, bestCombo: 30 };
+    expect(find(state, "upgrade").enabled).toBe(false);
+    expect(upgradeReason(state)).toBe("Earn 2★ in one show here to move on");
+    expect(shopClick(state, types, centre(find(state, "upgrade")), WIDTH, HEIGHT)).toBeNull();
+    expect(state.venueId).toBe(venues[0].id);
+    expect(state.money).toBe(100_000);
+  });
+
+  it("says how much more money a move takes once the stars are in", () => {
+    const state = { ...createGameState(), money: 120 };
+    state.records["back-garden"] = { stars: 3, bestMoney: 120, bestCombo: 9 };
+    expect(find(state, "upgrade").enabled).toBe(false);
+    expect(upgradeReason(state)).toBe("£180 more to move on");
+  });
+
+  it("gives no reason at the top venue", () => {
+    expect(upgradeReason({ ...createGameState(), venueId: "city-stadium" })).toBe("");
+  });
+
+  it("shows the venue's best show", () => {
+    const state = createGameState();
+    expect(bestsText(state)).toBe("No show here yet");
+    state.records["back-garden"] = { stars: 1, bestMoney: 1250, bestCombo: 12 };
+    expect(bestsText(state)).toBe("Best show £1,250  ·  best combo 12");
   });
 
   it("starts the show", () => {
@@ -188,6 +220,17 @@ describe("shop layout", () => {
     expect(shopLayout(519, 844).narrow).toBe(true);
     expect(shopLayout(520, 844).narrow).toBe(false);
   });
+
+  for (const [width, height] of [
+    [390, 844],
+    [1280, 720],
+  ]) {
+    it(`puts the reason under the venue button and above the next show at ${width}×${height}`, () => {
+      const layout = shopLayout(width, height);
+      expect(layout.reason.y - 13).toBeGreaterThanOrEqual(layout.upgrade.y + layout.upgrade.height);
+      expect(layout.reason.y).toBeLessThan(layout.nextShowY - layout.nextShowSize);
+    });
+  }
 
   it("puts the venue button under the venue details on a phone", () => {
     const layout = shopLayout(390, 844);

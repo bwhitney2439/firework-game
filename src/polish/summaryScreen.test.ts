@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createStats, summarize } from "./stats";
-import { canContinue, summaryLayout, summaryRows } from "./summaryScreen";
+import {
+  canContinue,
+  newBestLabels,
+  starScale,
+  summaryLayout,
+  summaryRows,
+} from "./summaryScreen";
 
 describe("summary screen", () => {
   it("lists the counts, the hit rate as a percentage and the show money", () => {
@@ -21,6 +27,29 @@ describe("summary screen", () => {
       ["Missed clicks", "5"],
       ["Money earned", "£1,250"],
     ]);
+  });
+
+  it("marks the rows that beat a record", () => {
+    expect(newBestLabels({ stars: true, money: false, combo: false })).toEqual([]);
+    expect(newBestLabels({ stars: false, money: true, combo: true })).toEqual([
+      "Best combo",
+      "Money earned",
+    ]);
+    const labels = summaryRows(summarize(createStats(), { showMoney: 0, bestCombo: 0 })).map(
+      ([label]) => label,
+    );
+    for (const label of newBestLabels({ stars: true, money: true, combo: true })) {
+      expect(labels).toContain(label);
+    }
+  });
+
+  it("pops the stars in one after another, then holds them", () => {
+    expect(starScale(0, 0)).toBe(0);
+    expect(starScale(0, 5)).toBe(1);
+    const time = 0.7;
+    expect(starScale(0, time)).toBeGreaterThan(0);
+    expect(starScale(2, time)).toBe(0);
+    for (let t = 0; t < 2; t += 0.05) expect(starScale(1, t)).toBeLessThanOrEqual(1.25);
   });
 
   it("ignores clicks until it has been open a moment", () => {
@@ -59,15 +88,24 @@ describe("summary layout", () => {
     });
   }
 
-  it("keeps the desktop summary as it was", () => {
+  it("puts the stars between the rating line and the rows", () => {
+    for (const lines of [1, 2]) {
+      const layout = summaryLayout(390, 844, 7, lines);
+      expect(layout.starsY - layout.starRadius).toBeGreaterThan(layout.top + 116 + (lines - 1) * 22);
+      expect(layout.starsY + layout.starRadius).toBeLessThan(layout.rowsTop - layout.rowSize);
+    }
+  });
+
+  it("lays out the desktop summary with room for the stars", () => {
     expect(summaryLayout(1280, 720, 7)).toMatchObject({
       left: 430,
-      top: 140,
+      top: 118,
       width: 420,
-      height: 440,
+      height: 484,
       pad: 40,
       titleSize: 34,
-      rowsTop: 306,
+      starsY: 272,
+      rowsTop: 328,
       scale: 1,
     });
   });

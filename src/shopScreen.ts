@@ -7,6 +7,7 @@ import {
   shopItems,
   upgradeVenue,
 } from "./game/shop";
+import { recordAt, starText } from "./game/records";
 import {
   FREE_BATCH,
   type GameState,
@@ -67,6 +68,8 @@ export interface ShopLayout {
   detailsY: number;
   detailsSize: number;
   upgrade: Box;
+  /** Baseline and alignment of the line saying why the move button is off. */
+  reason: { x: number; y: number; align: CanvasTextAlign };
   /** Baseline of the first "Next show" line. */
   nextShowY: number;
   nextShowSize: number;
@@ -102,6 +105,7 @@ export function shopLayout(width: number, height: number): ShopLayout {
       detailsY: 160,
       detailsSize: 15,
       upgrade: { x: right - 220, y: 120, width: 220, height: BUTTON_HEIGHT },
+      reason: { x: right, y: 174, align: "right" },
       nextShowY: 210,
       nextShowSize: 17,
       listTop: 250,
@@ -111,8 +115,9 @@ export function shopLayout(width: number, height: number): ShopLayout {
       newGame: { x: width - 136, y: height - 52, width: 120, height: 32 },
     };
   }
-  // Phones: the move button goes under the venue details, each row takes two
-  // lines, and "New game" goes up in the top corner, away from "Start show".
+  // Phones: the move button goes under the venue details and bests with the
+  // reason it is off under it, each row takes two lines, and "New game" goes
+  // up in the top corner, away from "Start show".
   return {
     narrow: true,
     left,
@@ -120,14 +125,15 @@ export function shopLayout(width: number, height: number): ShopLayout {
     titleY: 42,
     titleSize: 26,
     money: { x: left, y: 80, size: 26, align: "left" },
-    venueText: { x: left, y: 100, width: panelWidth, height: 66 },
+    venueText: { x: left, y: 100, width: panelWidth, height: 80 },
     venueNameY: 118,
     detailsY: 140,
     detailsSize: 14,
-    upgrade: { x: left, y: 172, width: panelWidth, height: BUTTON_HEIGHT },
-    nextShowY: 234,
+    upgrade: { x: left, y: 184, width: panelWidth, height: BUTTON_HEIGHT },
+    reason: { x: left + panelWidth / 2, y: 238, align: "center" },
+    nextShowY: 266,
     nextShowSize: 16,
-    listTop: 270,
+    listTop: 298,
     rowHeight: 64,
     cardHeight: 76,
     start,
@@ -161,6 +167,30 @@ function rowLayout(layout: ShopLayout, index: number) {
     refund: { x: right - 128, y, width: 36, height: BUTTON_HEIGHT },
     buy: { x: right - 84, y, width: 84, height: BUTTON_HEIGHT },
   };
+}
+
+/**
+ * Why the move button is off, or "" when it is on or there is nowhere to
+ * move to. Stars come first: money alone can't buy the way up.
+ */
+export function upgradeReason(state: GameState): string {
+  const venue = currentVenue(state);
+  const next = nextVenue(venue);
+  switch (canUpgradeVenue(state)) {
+    case "needs-stars":
+      return `Earn ${venue.starsToLeave}★ in one show here to move on`;
+    case "too-expensive":
+      return next ? `${formatMoney(next.price - state.money)} more to move on` : "";
+    default:
+      return "";
+  }
+}
+
+/** The venue's best show, or a nudge before the first one. */
+export function bestsText(state: GameState): string {
+  const record = state.records[state.venueId];
+  if (!record) return "No show here yet";
+  return `Best show ${formatMoney(record.bestMoney)}  ·  best combo ${record.bestCombo}`;
 }
 
 /**
@@ -313,16 +343,27 @@ export function drawShop(
   ctx.textAlign = "left";
   ctx.font = `20px ${FONT}`;
   ctx.fillText(venue.name, left, layout.venueNameY);
+  ctx.fillStyle = "#ffd166";
+  ctx.fillText(
+    starText(recordAt(state.records, venue.id).stars),
+    left + ctx.measureText(venue.name).width + 10,
+    layout.venueNameY,
+  );
   ctx.fillStyle = "#b8bdd6";
   const detailsFont = `${layout.detailsSize}px ${FONT}`;
   const details = `Crowd ${venue.crowd.toLocaleString("en-GB")}  ·  ${venue.moneyMultiplier}× pay per pop  ·  up to ${venue.fireworkCap} fireworks`;
-  drawLines(
-    ctx,
-    wrapText(details, layout.venueText.width, detailsFont, measure, "  ·  "),
-    left,
-    layout.detailsY,
-    detailsFont,
-  );
+  const detailLines = wrapText(details, layout.venueText.width, detailsFont, measure, "  ·  ");
+  drawLines(ctx, detailLines, left, layout.detailsY, detailsFont);
+  ctx.fillText(bestsText(state), left, layout.detailsY + detailLines.length * LINE_HEIGHT);
+
+  const reason = upgradeReason(state);
+  if (reason) {
+    ctx.fillStyle = "#ffd166";
+    ctx.textAlign = layout.reason.align;
+    ctx.font = `13px ${FONT}`;
+    ctx.fillText(reason, layout.reason.x, layout.reason.y);
+    ctx.textAlign = "left";
+  }
 
   ctx.fillStyle = "#f5f5f5";
   const nextShowFont = `${layout.nextShowSize}px ${FONT}`;

@@ -1,8 +1,15 @@
 import type { FireworkType } from "../fireworks/types";
 import { type GameState, currentVenue, refundableCount, spaceLeft } from "./state";
+import { recordAt } from "./records";
 import { nextVenue } from "./venues";
 
-export type ShopResult = "ok" | "too-expensive" | "no-space" | "free" | "top-venue";
+export type ShopResult =
+  | "ok"
+  | "too-expensive"
+  | "no-space"
+  | "free"
+  | "top-venue"
+  | "needs-stars";
 
 /** The types the shop sells. Free types come in the free batch instead. */
 export function shopItems(types: FireworkType[]): FireworkType[] {
@@ -37,9 +44,21 @@ export function refundFirework(state: GameState, type: FireworkType): boolean {
   return true;
 }
 
+/** Stars still needed at the current venue before moving on. */
+export function starsShort(state: GameState): number {
+  const venue = currentVenue(state);
+  return Math.max(0, venue.starsToLeave - recordAt(state.records, venue.id).stars);
+}
+
+/**
+ * Whether the player can move up a venue. They need the next venue's price
+ * and enough stars from one show at the current one; stars are checked
+ * first, so money alone can't buy the way up.
+ */
 export function canUpgradeVenue(state: GameState): ShopResult {
   const next = nextVenue(currentVenue(state));
   if (!next) return "top-venue";
+  if (starsShort(state) > 0) return "needs-stars";
   if (state.money < next.price) return "too-expensive";
   return "ok";
 }

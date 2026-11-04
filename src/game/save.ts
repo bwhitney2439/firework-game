@@ -6,8 +6,9 @@ import {
   createRequestProgress,
   requestKinds,
 } from "./requests";
+import { MAX_STARS, type Records, emptyRecord, recordAt } from "./records";
 import { type GameState, createGameState, fitStock } from "./state";
-import { venueById } from "./venues";
+import { venueById, venues } from "./venues";
 
 export const SAVE_KEY = "bonfire-night-popper/save";
 
@@ -66,6 +67,35 @@ function parseProgress(data: unknown): RequestProgress {
   return progress;
 }
 
+/** Reads the records of known venues. Bad or missing numbers count as 0. */
+function parseRecords(data: unknown): Records {
+  const records: Records = {};
+  if (typeof data !== "object" || data === null) return records;
+  for (const [id, saved] of Object.entries(data)) {
+    if (!venueById(id) || typeof saved !== "object" || saved === null) continue;
+    const { stars, bestMoney, bestCombo } = saved as Record<string, unknown>;
+    const record = emptyRecord();
+    if (isCount(stars)) record.stars = Math.min(MAX_STARS, Math.floor(stars));
+    if (isCount(bestMoney)) record.bestMoney = bestMoney;
+    if (isCount(bestCombo)) record.bestCombo = Math.floor(bestCombo);
+    records[id] = record;
+  }
+  return records;
+}
+
+/**
+ * Every venue below the current one was left, so it counts as passed: its
+ * stars are raised to what leaving it takes. Saves from before stars
+ * existed have no records, and this stops them getting stuck.
+ */
+function passVenuesBelow(state: GameState): void {
+  const current = venues.findIndex((venue) => venue.id === state.venueId);
+  for (const venue of venues.slice(0, Math.max(0, current))) {
+    const record = recordAt(state.records, venue.id);
+    state.records[venue.id] = { ...record, stars: Math.max(record.stars, venue.starsToLeave) };
+  }
+}
+
 /**
  * Turns parsed JSON into a valid state. Bad or missing fields get defaults,
  * and the stock is made to fit the venue (see fitStock).
@@ -87,6 +117,8 @@ export function parseSave(
   state.request = parseRequest(saved.request, types) ?? state.request;
   state.activeRequest = parseRequest(saved.activeRequest, types);
   if (state.activeRequest) state.requestProgress = parseProgress(saved.requestProgress);
+  state.records = parseRecords(saved.records);
+  passVenuesBelow(state);
   fitStock(state, types);
   return state;
 }

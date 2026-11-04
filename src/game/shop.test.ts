@@ -5,16 +5,24 @@ import {
   buyFirework,
   canBuyFirework,
   refundFirework,
+  canUpgradeVenue,
   shopItems,
+  starsShort,
   upgradeVenue,
 } from "./shop";
-import { FREE_BATCH, createGameState, spaceLeft } from "./state";
+import { FREE_BATCH, type GameState, createGameState, spaceLeft } from "./state";
 import { venues } from "./venues";
 
 const sparkler: FireworkType = { ...basicRocket, id: "sparkler", price: 5 };
 
 function richState() {
   return { ...createGameState(), money: 10000 };
+}
+
+/** Gives every venue enough stars to leave it. */
+function allStars(state: GameState): GameState {
+  for (const venue of venues) state.records[venue.id] = { stars: 3, bestMoney: 0, bestCombo: 0 };
+  return state;
 }
 
 describe("shop items", () => {
@@ -85,29 +93,60 @@ describe("buying fireworks", () => {
 
 describe("venue upgrades", () => {
   it("moves up one tier for its price", () => {
-    const state = { ...createGameState(), money: venues[1].price };
+    const state = allStars({ ...createGameState(), money: venues[1].price });
     expect(upgradeVenue(state)).toBe("ok");
     expect(state.venueId).toBe(venues[1].id);
     expect(state.money).toBe(0);
   });
 
   it("raises the cap so more fireworks fit", () => {
-    const state = richState();
+    const state = allStars(richState());
     const before = spaceLeft(state);
     upgradeVenue(state);
     expect(spaceLeft(state)).toBe(before + venues[1].fireworkCap - venues[0].fireworkCap);
   });
 
   it("refuses when the money is short", () => {
-    const state = { ...createGameState(), money: venues[1].price - 1 };
+    const state = allStars({ ...createGameState(), money: venues[1].price - 1 });
     expect(upgradeVenue(state)).toBe("too-expensive");
     expect(state.venueId).toBe(venues[0].id);
   });
 
   it("stops at the top tier", () => {
-    const state = richState();
+    const state = allStars(richState());
     for (let i = 1; i < venues.length; i++) expect(upgradeVenue(state)).toBe("ok");
     expect(state.venueId).toBe("city-stadium");
     expect(upgradeVenue(state)).toBe("top-venue");
+  });
+
+  it("needs enough stars at the current venue, however much money there is", () => {
+    const state = richState();
+    expect(starsShort(state)).toBe(venues[0].starsToLeave);
+    expect(upgradeVenue(state)).toBe("needs-stars");
+    expect(state.venueId).toBe(venues[0].id);
+    expect(state.money).toBe(10000);
+
+    state.records[venues[0].id] = { stars: venues[0].starsToLeave - 1, bestMoney: 500, bestCombo: 30 };
+    expect(canUpgradeVenue(state)).toBe("needs-stars");
+    expect(starsShort(state)).toBe(1);
+  });
+
+  it("moves up once a show here earned enough stars", () => {
+    const state = richState();
+    state.records[venues[0].id] = { stars: venues[0].starsToLeave, bestMoney: 0, bestCombo: 0 };
+    expect(starsShort(state)).toBe(0);
+    expect(upgradeVenue(state)).toBe("ok");
+    expect(state.venueId).toBe(venues[1].id);
+  });
+
+  it("asks for stars again at each new venue", () => {
+    const state = richState();
+    state.records[venues[0].id] = { stars: 3, bestMoney: 0, bestCombo: 0 };
+    upgradeVenue(state);
+    expect(canUpgradeVenue(state)).toBe("needs-stars");
+  });
+
+  it("says needs-stars before too-expensive", () => {
+    expect(canUpgradeVenue(createGameState())).toBe("needs-stars");
   });
 });

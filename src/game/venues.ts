@@ -9,6 +9,8 @@ export interface Venue {
   moneyMultiplier: number;
   /** Price to move up to this venue. Zero for the first venue. */
   price: number;
+  /** Stars needed from one show here before moving to the next venue. */
+  starsToLeave: number;
 }
 
 /** Venue tiers, smallest first. Each one is bought in order. */
@@ -20,6 +22,7 @@ export const venues: Venue[] = [
     crowd: 12,
     moneyMultiplier: 1,
     price: 0,
+    starsToLeave: 2,
   },
   {
     id: "village-green",
@@ -28,6 +31,7 @@ export const venues: Venue[] = [
     crowd: 150,
     moneyMultiplier: 1.5,
     price: 300,
+    starsToLeave: 2,
   },
   {
     id: "town-park",
@@ -36,6 +40,7 @@ export const venues: Venue[] = [
     crowd: 2000,
     moneyMultiplier: 2.5,
     price: 1200,
+    starsToLeave: 2,
   },
   {
     id: "city-stadium",
@@ -44,6 +49,7 @@ export const venues: Venue[] = [
     crowd: 40000,
     moneyMultiplier: 4,
     price: 5000,
+    starsToLeave: 2,
   },
 ];
 

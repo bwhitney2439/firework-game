@@ -7,6 +7,7 @@ import {
   createRequestProgress,
   pickRequest,
 } from "./requests";
+import type { Records } from "./records";
 import { type Venue, venueById, venues } from "./venues";
 
 /** Basic rockets given free at the start of every show. */
@@ -37,6 +38,8 @@ export interface GameState {
   activeRequest: Request | null;
   /** How far the active request has got, and whether it has paid. */
   requestProgress: RequestProgress;
+  /** Best stars, show money and combo per venue id. */
+  records: Records;
 }
 
 export function createGameState(): GameState {
@@ -48,6 +51,7 @@ export function createGameState(): GameState {
     request: { ...STARTER_REQUEST },
     activeRequest: null,
     requestProgress: createRequestProgress(),
+    records: {},
   };
 }
 
