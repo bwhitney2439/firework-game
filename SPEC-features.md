@@ -353,7 +353,8 @@ Pages, and a link is very likely to get opened on a phone.
 
 ### 9. Venue stars and personal bests
 
-**What the player sees:** every show earns 0 to 3 stars from its hit rate,
+**What the player sees:** every show earns 0 to 3 stars from its hit rate
+(and, like the summary rating, few enough missed clicks),
 shown big on the summary, with "New best!" when you beat a record. The shop
 shows the best stars and best show money for each venue. To move to the
 next venue you need the money **and** at least 2 stars at your current one.

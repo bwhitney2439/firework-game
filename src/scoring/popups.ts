@@ -9,14 +9,24 @@ import {
   POPUP_TEXT_HEIGHT,
   WEATHER_LINE_BOTTOM,
   WEATHER_LINE_RIGHT,
+  WHIFF_HALF_WIDTH,
+  WHIFF_TEXT_HEIGHT,
 } from "./tuning";
 
 /**
- * "bigMoney" is the money pop-up for a big pop. "banner" is the big combo
- * banner across the middle (see src/polish/juice.ts); it is never a floating
- * pop-up.
+ * "bigMoney" is the money pop-up for a big pop. "whiff" is the small
+ * "Whiff" for a missed click, which keeps out of the way of the others (see
+ * addWhiff). "banner" is the big combo banner across the middle (see
+ * src/polish/juice.ts); it is never a floating pop-up.
  */
-export type PopupStyle = "cheer" | "money" | "bigMoney" | "groan" | "gold" | "banner";
+export type PopupStyle =
+  | "cheer"
+  | "money"
+  | "bigMoney"
+  | "groan"
+  | "gold"
+  | "whiff"
+  | "banner";
 
 /** Floating text over a burst, such as "Aah!" or "+£12". */
 export interface Popup {
@@ -43,13 +53,60 @@ export function popupAnchor(at: Point, width: number): Point {
   return { x: at.x, y: Math.max(at.y, lowest) };
 }
 
+/**
+ * Adds a pop-up. Any "Whiff" it would cover is dropped, so a missed click
+ * never hides the cheer or money for a pop.
+ */
 export function addPopup(
   popups: Popup[],
   text: string,
   style: PopupStyle,
   at: Point,
 ): void {
-  popups.push({ text, style, at: { ...at }, age: 0 });
+  const popup = { text, style, at: { ...at }, age: 0 };
+  if (style !== "whiff") removeWhere(popups, (other) => other.style === "whiff" && overlaps(other, popup));
+  popups.push(popup);
+}
+
+/**
+ * Adds the "Whiff" for a missed click at `at`. Only one shows at a time, so
+ * mashing can't stack them up: a new one takes the old one's place. It is
+ * moved down below any other pop-up it would cover. Pop-ups all drift up at
+ * the same speed, so it stays clear of them as they rise.
+ */
+export function addWhiff(popups: Popup[], at: Point): void {
+  removeWhere(popups, (popup) => popup.style === "whiff");
+  const whiff: Popup = { text: "Whiff", style: "whiff", at: { ...at }, age: 0 };
+  for (;;) {
+    const covered = popups.find((popup) => overlaps(popup, whiff));
+    if (!covered) break;
+    whiff.at.y = popupPosition(covered).y + POPUP_GAP + WHIFF_TEXT_HEIGHT;
+  }
+  popups.push(whiff);
+}
+
+/** Where a pop-up's text is now, give or take, with its baseline at `bottom`. */
+function popupBox(popup: Popup): { left: number; right: number; top: number; bottom: number } {
+  const at = popupPosition(popup);
+  const halfWidth = popup.style === "whiff" ? WHIFF_HALF_WIDTH : POPUP_HALF_WIDTH;
+  const height = popup.style === "whiff" ? WHIFF_TEXT_HEIGHT : POPUP_TEXT_HEIGHT;
+  return { left: at.x - halfWidth, right: at.x + halfWidth, top: at.y - height, bottom: at.y };
+}
+
+/** Whether two pop-ups' text would touch, or come within POPUP_GAP above or below. */
+export function overlaps(a: Popup, b: Popup): boolean {
+  const boxA = popupBox(a);
+  const boxB = popupBox(b);
+  return (
+    boxA.left < boxB.right &&
+    boxB.left < boxA.right &&
+    boxA.top < boxB.bottom + POPUP_GAP &&
+    boxB.top < boxA.bottom + POPUP_GAP
+  );
+}
+
+function removeWhere<T>(items: T[], drop: (item: T) => boolean): void {
+  for (let i = items.length - 1; i >= 0; i--) if (drop(items[i])) items.splice(i, 1);
 }
 
 /** Ages the pop-ups and drops the ones that have faded. */
@@ -69,6 +126,7 @@ const STYLES: Record<PopupStyle, { font: string; color: string }> = {
   money: { font: "bold 20px system-ui, sans-serif", color: "#7ee081" },
   bigMoney: { font: "bold 26px system-ui, sans-serif", color: "#9bf59e" },
   groan: { font: "italic 20px system-ui, sans-serif", color: "#9aa3c7" },
+  whiff: { font: "italic 16px system-ui, sans-serif", color: "#9aa3c7" },
   gold: { font: "bold 24px system-ui, sans-serif", color: "#ffd166" },
   banner: { font: "bold 64px system-ui, sans-serif", color: "#ffc94d" },
 };
@@ -98,10 +156,15 @@ export function drawPopupText(
   ctx.fillText(text, at.x, at.y);
 }
 
+/** Draws the pop-ups, with any "Whiff" underneath the rest. */
 export function drawPopups(ctx: CanvasRenderingContext2D, popups: Popup[]): void {
   ctx.save();
   ctx.textAlign = "center";
-  for (const popup of popups) {
+  const whiffsFirst = [
+    ...popups.filter((popup) => popup.style === "whiff"),
+    ...popups.filter((popup) => popup.style !== "whiff"),
+  ];
+  for (const popup of whiffsFirst) {
     ctx.globalAlpha = Math.max(0, 1 - popup.age / POPUP_DURATION);
     drawPopupText(ctx, popup.text, popup.style, popupPosition(popup));
   }

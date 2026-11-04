@@ -1,8 +1,9 @@
 import { fireworkTypes } from "./fireworks/registry";
-import { type NewBests, recordShow } from "./game/records";
+import { type NewBests, bestShow, recordShow } from "./game/records";
 import { loadGame, saveGame } from "./game/save";
 import { createShow } from "./game/show";
 import { currentVenue, fireworksForShow } from "./game/state";
+import { venues } from "./game/venues";
 import { settleScoredEvents, startScoringAtVenue } from "./game/wallet";
 import {
   drawPause,
@@ -48,6 +49,8 @@ const MAX_STEP = 0.1;
 const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
 const ctx = canvas.getContext("2d")!;
 const sound = createSound(undefined, undefined, loadVolume());
+/** Matches when the main pointer is a finger, so the title screen says "Tap". */
+const touchScreen = window.matchMedia("(pointer: coarse)");
 
 type Phase = "title" | "shop" | "show" | "paused" | "summary";
 
@@ -223,7 +226,10 @@ function frame(time: number): void {
   const height = canvas.clientHeight;
 
   if (game.phase === "title") {
-    drawTitleScreen(ctx, width, height, time / 1000, sound.isMuted());
+    drawTitleScreen(ctx, width, height, time / 1000, sound.isMuted(), {
+      touch: touchScreen.matches,
+      best: bestShow(game.state.records, venues),
+    });
     drawSpeakerButton(ctx, width, sound.isMuted());
   } else if (game.phase === "shop") {
     drawShop(ctx, game.state, fireworkTypes, width, height);

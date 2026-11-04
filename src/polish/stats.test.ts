@@ -17,6 +17,7 @@ import {
   SPECTACULAR_MAX_MISSES_PER_LAUNCH,
   SUMMARY_DELAY,
   createStats,
+  fewMisses,
   isSummaryDue,
   rate,
   recordEvent,
@@ -139,6 +140,15 @@ describe("rating missed clicks", () => {
     expect(rate(1, 10, 10 * SPECTACULAR_MAX_MISSES_PER_LAUNCH + 1).title).toBe("Crowd pleaser");
     expect(rate(1, 10, 200).title).toBe("Crowd pleaser");
     expect(rate(0.9, 10, 200).title).toBe("Crowd pleaser");
+  });
+
+  it("shares its miss limit check with the venue stars", () => {
+    expect(fewMisses(10, 2, PERFECT_MAX_MISSES_PER_LAUNCH)).toBe(true);
+    expect(fewMisses(10, 3, PERFECT_MAX_MISSES_PER_LAUNCH)).toBe(false);
+    expect(fewMisses(10, 5, SPECTACULAR_MAX_MISSES_PER_LAUNCH)).toBe(true);
+    expect(fewMisses(10, 6, SPECTACULAR_MAX_MISSES_PER_LAUNCH)).toBe(false);
+    expect(fewMisses(10, 1000, Infinity)).toBe(true);
+    expect(fewMisses(0, 0, Infinity)).toBe(false);
   });
 
   it("leaves the lower ratings to the hit rate", () => {

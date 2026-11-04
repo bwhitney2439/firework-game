@@ -13,7 +13,7 @@ import {
   triggerFlash,
   updateJuice,
 } from "../polish/juice";
-import { addPopup, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
+import { addPopup, addWhiff, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
 import {
   createScore,
   type MissScore,
@@ -109,12 +109,12 @@ export function handleShowEvents(
 
 /**
  * Scores a click at `at` that hit nothing: the crowd drops a little, the
- * combo ends, and a "Whiff" pop-up and a grey puff appear. Listeners are not
- * told, so the wallet does not change.
+ * combo ends, and a "Whiff" pop-up (see addWhiff) and a grey puff appear.
+ * Listeners are not told, so the wallet does not change.
  */
 export function handleMiss(scoring: Scoring, at: Point, width: number): MissScore {
   const missed = scoreMiss(scoring.score);
-  addPopup(scoring.popups, "Whiff", "groan", popupAnchor(at, width));
+  addWhiff(scoring.popups, popupAnchor(at, width));
   scoring.puffs.push({ at: { ...at }, age: 0 });
   return missed;
 }

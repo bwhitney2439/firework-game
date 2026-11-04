@@ -1,7 +1,24 @@
-import type { Summary } from "../polish/stats";
+import {
+  PERFECT_MAX_MISSES_PER_LAUNCH,
+  SPECTACULAR_MAX_MISSES_PER_LAUNCH,
+  type Summary,
+  fewMisses,
+} from "../polish/stats";
+import type { Venue } from "./venues";
 
 /** Hit rate needed for 1, 2 and 3 stars. */
 export const STAR_HIT_RATES = [0.5, 0.8, 1];
+/**
+ * Most missed clicks per launched firework for 1, 2 and 3 stars. These are
+ * the summary rating's limits, so 3 stars needs a "Perfect show!" and 2
+ * stars at least "Spectacular!". A masher gets 1 star at most, which is not
+ * enough to leave a venue.
+ */
+export const STAR_MAX_MISSES_PER_LAUNCH = [
+  Infinity,
+  SPECTACULAR_MAX_MISSES_PER_LAUNCH,
+  PERFECT_MAX_MISSES_PER_LAUNCH,
+];
 /** Most stars one show can earn. */
 export const MAX_STARS = STAR_HIT_RATES.length;
 
@@ -29,15 +46,44 @@ export function emptyRecord(): VenueRecord {
   return { stars: 0, bestMoney: 0, bestCombo: 0 };
 }
 
-/** Stars from 0 to 3 for a show's hit rate. A show with nothing launched gets none. */
-export function starsFor(summary: Pick<Summary, "hitRate" | "launched">): number {
-  if (summary.launched <= 0) return 0;
-  return STAR_HIT_RATES.filter((rate) => summary.hitRate >= rate).length;
+/**
+ * Stars from 0 to 3 for a show's hit rate and missed clicks. Each star needs
+ * its hit rate and few enough missed clicks, so a show with too many misses
+ * for 3 stars gets 2 at most. A show with nothing launched gets none.
+ */
+export function starsFor(
+  summary: Pick<Summary, "hitRate" | "launched" | "missedClicks">,
+): number {
+  return STAR_HIT_RATES.filter(
+    (rate, i) =>
+      summary.hitRate >= rate &&
+      fewMisses(summary.launched, summary.missedClicks, STAR_MAX_MISSES_PER_LAUNCH[i]),
+  ).length;
 }
 
 /** The record for a venue, or an empty one if it hasn't been played. */
 export function recordAt(records: Records, venueId: string): VenueRecord {
   return records[venueId] ?? emptyRecord();
+}
+
+/** The most money made in one show, and where. */
+export interface BestShow {
+  venue: Venue;
+  money: number;
+}
+
+/**
+ * The player's best show across `venueList`: the venue record with the most
+ * money. A tie goes to the bigger venue. Null when no show has made money
+ * yet, such as on a new game or an old save that only had its stars filled in.
+ */
+export function bestShow(records: Records, venueList: Venue[]): BestShow | null {
+  let best: BestShow | null = null;
+  for (const venue of venueList) {
+    const money = recordAt(records, venue.id).bestMoney;
+    if (money > 0 && money >= (best?.money ?? 0)) best = { venue, money };
+  }
+  return best;
 }
 
 export function isNewBest(bests: NewBests): boolean {

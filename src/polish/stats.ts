@@ -126,6 +126,16 @@ export const PERFECT_MAX_MISSES_PER_LAUNCH = 0.2;
 export const SPECTACULAR_MAX_MISSES_PER_LAUNCH = 0.5;
 
 /**
+ * Whether a show had few enough missed clicks for a top result: at most
+ * `maxPerLaunch` for each launched firework. The summary rating and the
+ * venue stars (src/game/records.ts) both use this, so mashing never earns
+ * either. A show with nothing launched never has few enough.
+ */
+export function fewMisses(launched: number, missedClicks: number, maxPerLaunch: number): boolean {
+  return launched > 0 && missedClicks / launched <= maxPerLaunch;
+}
+
+/**
  * Rates a show by its hit rate and its missed clicks. The top two ratings
  * also need few missed clicks for each launched firework.
  */
@@ -133,14 +143,13 @@ export function rate(hitRate: number, launched: number, missedClicks: number): R
   if (launched === 0) {
     return { title: "No show tonight", line: "Nothing went up at all." };
   }
-  const missesPerLaunch = missedClicks / launched;
-  if (hitRate >= 1 && missesPerLaunch <= PERFECT_MAX_MISSES_PER_LAUNCH) {
+  if (hitRate >= 1 && fewMisses(launched, missedClicks, PERFECT_MAX_MISSES_PER_LAUNCH)) {
     return {
       title: "Perfect show!",
       line: "Not a single dud. Remember, remember!",
     };
   }
-  if (hitRate >= 0.8 && missesPerLaunch <= SPECTACULAR_MAX_MISSES_PER_LAUNCH) {
+  if (hitRate >= 0.8 && fewMisses(launched, missedClicks, SPECTACULAR_MAX_MISSES_PER_LAUNCH)) {
     return {
       title: "Spectacular!",
       line: "The crowd will talk about this one.",

@@ -67,6 +67,10 @@ export const WEATHER_LINE_BOTTOM = 80;
 export const WEATHER_LINE_RIGHT = 150;
 /** Space kept between a pop-up and the text above it. */
 export const POPUP_GAP = 8;
+/** Height of the smaller "Whiff" text for a missed click, in pixels. */
+export const WHIFF_TEXT_HEIGHT = 18;
+/** About half the width of the "Whiff" text. */
+export const WHIFF_HALF_WIDTH = 28;
 
 /** Seconds the grey puff of smoke from a missed click lasts. */
 export const PUFF_DURATION = 0.45;
