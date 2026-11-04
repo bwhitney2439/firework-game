@@ -1,4 +1,6 @@
+import { LANTERN_MAX_DRIFT, LANTERN_MIN_DRIFT, skyLantern } from "../fireworks/skyLantern";
 import type { FireworkType, Point } from "../fireworks/types";
+import { LANTERN_FIRST_DELAY, LANTERN_INTERVAL } from "../scoring/tuning";
 import {
   type Weather,
   pickWeather,
@@ -47,6 +49,9 @@ export interface Show {
   active: Firework[];
   bursts: Burst[];
   timeToNextLaunch: number;
+  /** Seconds until the next sky lantern goes up. */
+  timeToNextLantern: number;
+  /** Fireworks from the stock that were popped. Stars and lanterns don't count. */
   popped: number;
   fizzled: number;
   weather: Weather;
@@ -70,6 +75,7 @@ export function createShow(stock: FireworkType[], random?: () => number): Show {
     active: [],
     bursts: [],
     timeToNextLaunch: 0,
+    timeToNextLantern: LANTERN_FIRST_DELAY,
     popped: 0,
     fizzled: 0,
     weather,
@@ -80,6 +86,11 @@ export function createShow(stock: FireworkType[], random?: () => number): Show {
 /** Flight progress: 0 at launch and 1 at the top of the flight. */
 export function flightProgress(firework: Firework): number {
   return firework.age * firework.type.riseSpeed * (firework.rise ?? 1);
+}
+
+/** True for something the player must not pop, such as a sky lantern. */
+export function isAvoid(firework: Firework): boolean {
+  return firework.type.avoid === true;
 }
 
 /** True for a star split off another firework, which isn't from the stock. */
@@ -114,6 +125,8 @@ export function fireworkPosition(
 function driftedX(firework: Firework): number {
   if (!firework.wind) return firework.launchX;
   const x = firework.launchX + windDrift(firework.age, firework.wind);
+  // A lantern may float off the side; updateShow lets it go there.
+  if (isAvoid(firework)) return x;
   return Math.min(Math.max(x, SIDE_MARGIN), 1 - SIDE_MARGIN);
 }
 
@@ -141,7 +154,16 @@ export function updateShow(
     show.timeToNextLaunch += LAUNCH_INTERVAL;
   }
 
+  // Lanterns only go up while there are fireworks left to launch.
+  show.timeToNextLantern -= dt;
+  while (show.timeToNextLantern <= 0 && show.queue.length > 0) {
+    show.active.push(lanternAt(show, -show.timeToNextLantern, random));
+    show.timeToNextLantern += LANTERN_INTERVAL;
+  }
+
   show.active = show.active.filter((firework) => {
+    // A lantern that floats off the top or a side just leaves: no event.
+    if (isAvoid(firework)) return flightProgress(firework) < 1 && isOnScreen(firework);
     if (flightProgress(firework) < 1) return true;
     // A star that runs out just fades: no fizzle and no crowd loss.
     if (isStar(firework)) return false;
@@ -154,6 +176,28 @@ export function updateShow(
   show.bursts = show.bursts.filter((burst) => burst.age < BURST_DURATION);
 
   return events;
+}
+
+/**
+ * A sky lantern let go `age` seconds ago. It starts on one half of the sky
+ * and drifts across towards the other, with the night's wind added.
+ */
+function lanternAt(show: Show, age: number, random: () => number): Firework {
+  const direction = random() < 0.5 ? -1 : 1;
+  const half = SIDE_MARGIN + random() * (0.5 - SIDE_MARGIN);
+  const drift = LANTERN_MIN_DRIFT + random() * (LANTERN_MAX_DRIFT - LANTERN_MIN_DRIFT);
+  return {
+    type: skyLantern,
+    launchX: direction > 0 ? half : 1 - half,
+    age,
+    wind: direction * drift + show.windStrength,
+  };
+}
+
+/** False once a lantern has drifted past either side of the screen. */
+function isOnScreen(firework: Firework): boolean {
+  const x = driftedX(firework);
+  return x > -SIDE_MARGIN && x < 1 + SIDE_MARGIN;
 }
 
 /** What the weather does to a firework launched now. A clear night adds nothing. */
@@ -189,7 +233,7 @@ export function clickAt(
 
   show.active = show.active.filter((firework) => firework !== target);
   show.bursts.push({ type: target.type, at: targetAt, age: 0 });
-  if (!isStar(target)) show.popped++;
+  if (!isStar(target) && !isAvoid(target)) show.popped++;
   if (target.type.split) splitAt(show, target.type.split, targetAt);
   return { kind: "popped", firework: target, at: targetAt };
 }
@@ -214,7 +258,10 @@ function splitAt(
   }
 }
 
-/** The show ends when every firework was launched and none is still in the air. */
+/**
+ * The show ends when every firework was launched and none is still in the
+ * air. Lanterns don't hold it up: they float on, but can't be popped.
+ */
 export function isShowOver(show: Show): boolean {
-  return show.queue.length === 0 && show.active.length === 0;
+  return show.queue.length === 0 && show.active.every(isAvoid);
 }

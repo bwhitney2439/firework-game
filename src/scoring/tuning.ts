@@ -36,6 +36,13 @@ export const MISS_CROWD_LOSS = 0.03;
 /** Whether a click that hits nothing ends the combo. */
 export const MISS_BREAKS_COMBO = true;
 
+/** Crowd loss for popping a sky lantern (more than a miss, less than a fizzle). */
+export const LANTERN_CROWD_LOSS = 0.1;
+/** Seconds into a show before the first sky lantern goes up. */
+export const LANTERN_FIRST_DELAY = 3;
+/** Seconds between sky lanterns while there are fireworks left to launch. */
+export const LANTERN_INTERVAL = 4.5;
+
 /** The crowd multiplier starts above this crowd level. */
 export const CROWD_MULTIPLIER_THRESHOLD = 0.5;
 /** Money multiplier with a full crowd meter. */
@@ -54,6 +61,10 @@ export const POPUP_TEXT_HEIGHT = 26;
 export const POPUP_HALF_WIDTH = 70;
 /** Lowest point of the counts line that render.ts draws in the top left. */
 export const COUNTS_LINE_BOTTOM = 40;
+/** Lowest point of the weather word that render.ts draws under the counts line. */
+export const WEATHER_LINE_BOTTOM = 80;
+/** Right edge of the weather word, which sits beside the pause button. */
+export const WEATHER_LINE_RIGHT = 150;
 /** Space kept between a pop-up and the text above it. */
 export const POPUP_GAP = 8;
 

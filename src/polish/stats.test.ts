@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
 import { crossette } from "../fireworks/crossette";
+import { skyLantern } from "../fireworks/skyLantern";
 import {
   LAUNCH_INTERVAL,
   type ShowEvent,
   clickAt,
   createShow,
   fireworkPosition,
+  isAvoid,
 } from "../game/show";
+import { LANTERN_FIRST_DELAY } from "../scoring/tuning";
 import {
   SUMMARY_DELAY,
   createStats,
@@ -158,5 +161,67 @@ describe("crossette stars", () => {
     stepShow(show, stats, 5, middle);
     expect(stats.fizzled).toBe(0);
     expect(summarize(stats, noScore).hitRate).toBe(1);
+  });
+});
+
+describe("sky lanterns", () => {
+  const lantern = { type: skyLantern, launchX: 0.5, age: 1 };
+  const lanternPop: ShowEvent = { kind: "popped", firework: lantern, at: { x: 0, y: 0 } };
+
+  it("counts a popped lantern on its own, not as a pop", () => {
+    const stats = createStats();
+    recordEvent(stats, lanternPop);
+    expect(stats.lanternsPopped).toBe(1);
+    expect(stats.popped).toBe(0);
+    expect(stats.fizzled).toBe(0);
+    expect(stats.bonusStars).toBe(0);
+    expect(summarize(stats, noScore).lanternsPopped).toBe(1);
+  });
+
+  /** Plays a show of rockets, popping every rocket and, if asked, every lantern. */
+  function playShow(count: number, popLanterns: boolean) {
+    const show = createShow(Array.from({ length: count }, () => basicRocket));
+    const stats = createStats();
+    let launched = 0;
+    for (let t = 0; t < 40; t += 0.1) {
+      launched += stepShow(show, stats, 0.1, middle).launched;
+      for (const firework of [...show.active]) {
+        if (isAvoid(firework) && !popLanterns) continue;
+        const at = fireworkPosition(firework, 1000, 800);
+        const event = clickAt(show, at, 1000, 800);
+        if (event) recordEvent(stats, event);
+      }
+    }
+    return { stats, launched };
+  }
+
+  it("aren't counted as launched", () => {
+    const { stats, launched } = playShow(10, false);
+    expect(stats.launched).toBe(10);
+    expect(launched).toBe(10);
+  });
+
+  it("can be left alone for a perfect show at no cost", () => {
+    const { stats } = playShow(10, false);
+    expect(stats.fizzled).toBe(0);
+    expect(stats.lanternsPopped).toBe(0);
+    expect(summarize(stats, noScore).rating.title).toBe("Perfect show!");
+  });
+
+  it("don't spoil the hit rate even when popped", () => {
+    const { stats } = playShow(10, true);
+    expect(stats.lanternsPopped).toBeGreaterThan(0);
+    expect(stats.popped).toBe(10);
+    expect(summarize(stats, noScore).hitRate).toBe(1);
+  });
+
+  it("aren't counted as fizzled when they float away", () => {
+    const show = createShow(Array.from({ length: 6 }, () => basicRocket));
+    const stats = createStats();
+    stepShow(show, stats, LANTERN_FIRST_DELAY, middle);
+    expect(show.active.some(isAvoid)).toBe(true);
+    for (let t = 0; t < 30; t += 0.1) stepShow(show, stats, 0.1, middle);
+    expect(show.active).toHaveLength(0);
+    expect(stats.fizzled).toBe(6);
   });
 });

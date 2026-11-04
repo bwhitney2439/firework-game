@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
 import { goldenRain } from "../fireworks/goldenRain";
+import { skyLantern } from "../fireworks/skyLantern";
 import type { FireworkType } from "../fireworks/types";
 import { clickAt, createShow, fireworkPosition, type ShowEvent, updateShow } from "../game/show";
+import { advanceRequest, createRequestProgress, requestText, STARTER_REQUEST, type Request } from "../game/requests";
+import { createGameState } from "../game/state";
+import { settleScoredEvents } from "../game/wallet";
 import { HUD_BOTTOM } from "./hud";
 import { popupAnchor, popupPosition, updatePopups } from "./popups";
 import {
@@ -19,6 +23,7 @@ import {
   BIG_MONEY_POPUP,
   COUNTS_LINE_BOTTOM,
   FLASH_DURATION,
+  LANTERN_CROWD_LOSS,
   MISS_CROWD_LOSS,
   POPUP_DURATION,
   POPUP_TEXT_HEIGHT,
@@ -289,5 +294,59 @@ describe("big-pop juice", () => {
     const money = scoring.popups.filter((popup) => popup.style !== "cheer");
     expect(money.map((popup) => popup.style)).toEqual(["money", "bigMoney"]);
     expect(scoring.score.showMoney).toBeGreaterThan(BIG_MONEY_POPUP);
+  });
+});
+
+describe("popping a sky lantern", () => {
+  /** A show with one rocket and one lantern in the air, a little apart. */
+  function showWithLantern() {
+    const show = flyingShow();
+    show.active.push({ type: skyLantern, launchX: 0.2, age: 2 });
+    return show;
+  }
+  const lanternAt = (show: ReturnType<typeof showWithLantern>) =>
+    fireworkPosition(show.active[1], WIDTH, HEIGHT);
+
+  it("boos, with no money pop-up, flash or banner", () => {
+    const show = showWithLantern();
+    const scoring = createScoring();
+    const crowd = scoring.score.crowd;
+    const click = handleShowClick(scoring, show, lanternAt(show), WIDTH, HEIGHT);
+    expect(click.kind).toBe("popped");
+    expect(scoring.popups.map((popup) => popup.text)).toEqual(["Boo!", "Not the lanterns!"]);
+    expect(scoring.popups.every((popup) => popup.style === "groan")).toBe(true);
+    expect(scoring.juice.flash).toBe(0);
+    expect(scoring.juice.banner).toBeNull();
+    expect(scoring.score.crowd).toBeCloseTo(crowd - LANTERN_CROWD_LOSS, 10);
+  });
+
+  it("leaves the wallet and the stock alone", () => {
+    const show = showWithLantern();
+    const scoring = createScoring();
+    const state = { ...createGameState(), money: 50, stock: { [basicRocket.id]: 3 } };
+    settleScoredEvents(scoring, state);
+    handleShowClick(scoring, show, lanternAt(show), WIDTH, HEIGHT);
+    expect(state.money).toBe(50);
+    expect(state.stock).toEqual({ [basicRocket.id]: 3 });
+  });
+
+  it("never moves the booker's request on", () => {
+    const requests: Request[] = [
+      STARTER_REQUEST,
+      { kind: "combo", target: 1, reward: 40, text: requestText("combo", 1) },
+      { kind: "aah", target: 1, reward: 40, text: requestText("aah", 1) },
+      { kind: "show-money", target: 1, reward: 40, text: requestText("show-money", 1) },
+      { kind: "full-crowd", target: 1, reward: 40, text: requestText("full-crowd", 1) },
+    ];
+    for (const request of requests) {
+      const show = showWithLantern();
+      const scoring = createScoring();
+      scoring.score.crowd = 0;
+      const progress = createRequestProgress();
+      const click = handleShowClick(scoring, show, lanternAt(show), WIDTH, HEIGHT);
+      if (click.kind !== "popped") throw new Error("expected a pop");
+      expect(advanceRequest(progress, request, click.scored[0]), request.kind).toBe(false);
+      expect(progress.count, request.kind).toBe(0);
+    }
   });
 });
