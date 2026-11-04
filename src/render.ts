@@ -13,7 +13,9 @@ export function render(
   height: number,
 ): void {
   const time = performance.now() / 1000;
-  drawScenery(ctx, width, height, time, crowdExcitement(show.bursts));
+  // A popped lantern gets a boo, not a cheer, so its burst doesn't excite the crowd.
+  const cheered = show.bursts.filter((burst) => !burst.type.avoid);
+  drawScenery(ctx, width, height, time, crowdExcitement(cheered));
   if (show.weather === "drizzle") drawRain(ctx, time, width, height);
 
   for (const firework of show.active) {

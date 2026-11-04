@@ -27,6 +27,11 @@ export interface FireworkType {
   pathOffset(age: number): number;
   /** Stars that fly out when this firework is popped: their type and how many. */
   split?: { type: FireworkType; count: number };
+  /**
+   * True for something the player must not pop, such as a sky lantern. It
+   * isn't from the stock: popping it costs crowd, and leaving it is free.
+   */
+  avoid?: boolean;
   drawRising(ctx: CanvasRenderingContext2D, at: Point, age: number): void;
   /** Draws the burst. Progress runs from 0 to 1. */
   drawBurst(ctx: CanvasRenderingContext2D, at: Point, progress: number): void;

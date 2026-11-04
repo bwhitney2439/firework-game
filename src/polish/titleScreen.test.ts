@@ -51,13 +51,21 @@ describe("title screen text", () => {
     );
   });
 
-  it("keeps the desktop title screen as it was", () => {
+  it("warns about the sky lanterns under the subtitle", () => {
+    const lines = titleLayout(390, 844, false, measure);
+    const lantern = lines.findIndex((line) => line.kind === "lantern");
+    expect(lines[lantern].text).toBe("Don't pop the sky lanterns!");
+    expect(lines[lantern - 1].kind).toBe("subtitle");
+  });
+
+  it("keeps the desktop title screen as it was, plus the lantern warning", () => {
     const lines = titleLayout(1280, 720, true, measure);
     expect(lines.map(({ text, y }) => [text, Math.round(y)])).toEqual([
       ["Bonfire Night Popper", 302],
       ["Click the fireworks to pop them before they fizzle out", 360],
-      ["Click to start", 416],
-      ["Press M to turn sound on", 450],
+      ["Don't pop the sky lanterns!", 392],
+      ["Click to start", 448],
+      ["Press M to turn sound on", 482],
     ]);
   });
 });

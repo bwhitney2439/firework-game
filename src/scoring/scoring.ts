@@ -78,7 +78,12 @@ export function handleShowEvents(
   for (const event of events) {
     if (!event) continue;
     const scored = scoreEvent(scoring.score, event);
-    if (scored.kind === "popped") {
+    if (scored.kind === "popped" && scored.score.cheer === "Boo") {
+      // A lantern: the crowd boos, and there's no money, flash or banner.
+      const at = popupAnchor(scored.event.at, width);
+      addPopup(scoring.popups, "Boo!", "groan", at);
+      addPopup(scoring.popups, "Not the lanterns!", "groan", { x: at.x, y: at.y + MONEY_OFFSET });
+    } else if (scored.kind === "popped") {
       const at = popupAnchor(scored.event.at, width);
       const cheer = scored.score.combo > 1
         ? `${scored.score.cheer}! x${scored.score.combo}`

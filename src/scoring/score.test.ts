@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
+import { skyLantern } from "../fireworks/skyLantern";
 import type { FireworkType } from "../fireworks/types";
 import type { Firework } from "../game/show";
 import {
@@ -21,6 +22,7 @@ import {
   CROWD_FIZZLE_LOSS,
   CROWD_MULTIPLIER_MAX,
   CROWD_START,
+  LANTERN_CROWD_LOSS,
   MISS_BREAKS_COMBO,
   MISS_CROWD_LOSS,
   MONEY_PER_BASE_VALUE,
@@ -225,5 +227,49 @@ describe("missed clicks", () => {
     scoreMiss(score);
     expect(score.showMoney).toBe(money);
     expect(score.bestCombo).toBe(2);
+  });
+});
+
+describe("popping a sky lantern", () => {
+  it("pays nothing and lowers the crowd", () => {
+    const score = createScore();
+    const popped = scorePop(score, fireworkAt(0.8, skyLantern));
+    expect(popped.money).toBe(0);
+    expect(score.showMoney).toBe(0);
+    expect(score.crowd).toBeCloseTo(CROWD_START - LANTERN_CROWD_LOSS, 10);
+    expect(popped.crowd).toBe(score.crowd);
+    expect(popped.cheer).toBe("Boo");
+  });
+
+  it("never takes the crowd below 0", () => {
+    const score = createScore();
+    score.crowd = 0.02;
+    scorePop(score, fireworkAt(0.5, skyLantern));
+    expect(score.crowd).toBe(0);
+  });
+
+  it("ends the combo and has combo 0, so the next pop is combo 1", () => {
+    const score = createScore();
+    scorePop(score, fireworkAt(0.5));
+    tickScore(score, 0.2);
+    scorePop(score, fireworkAt(0.5));
+    tickScore(score, 0.2);
+    const lantern = scorePop(score, fireworkAt(0.5, skyLantern));
+    expect(lantern.combo).toBe(0);
+    expect(score.combo).toBe(0);
+    tickScore(score, 0.2);
+    expect(scorePop(score, fireworkAt(0.5)).combo).toBe(1);
+    expect(score.bestCombo).toBe(2);
+  });
+
+  it("is scored the same way through scoreEvent", () => {
+    const score = createScore();
+    const scored = scoreEvent(score, {
+      kind: "popped",
+      firework: fireworkAt(0.5, skyLantern),
+      at: { x: 0, y: 0 },
+    });
+    expect(scored.kind).toBe("popped");
+    expect(scored.score).toMatchObject({ money: 0, combo: 0, cheer: "Boo" });
   });
 });
