@@ -4,6 +4,7 @@ import {
   type Summary,
   fewMisses,
 } from "../polish/stats";
+import type { Venue } from "./venues";
 
 /** Hit rate needed for 1, 2 and 3 stars. */
 export const STAR_HIT_RATES = [0.5, 0.8, 1];
@@ -63,6 +64,26 @@ export function starsFor(
 /** The record for a venue, or an empty one if it hasn't been played. */
 export function recordAt(records: Records, venueId: string): VenueRecord {
   return records[venueId] ?? emptyRecord();
+}
+
+/** The most money made in one show, and where. */
+export interface BestShow {
+  venue: Venue;
+  money: number;
+}
+
+/**
+ * The player's best show across `venueList`: the venue record with the most
+ * money. A tie goes to the bigger venue. Null when no show has made money
+ * yet, such as on a new game or an old save that only had its stars filled in.
+ */
+export function bestShow(records: Records, venueList: Venue[]): BestShow | null {
+  let best: BestShow | null = null;
+  for (const venue of venueList) {
+    const money = recordAt(records, venue.id).bestMoney;
+    if (money > 0 && money >= (best?.money ?? 0)) best = { venue, money };
+  }
+  return best;
 }
 
 export function isNewBest(bests: NewBests): boolean {

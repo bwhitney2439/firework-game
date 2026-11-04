@@ -19,6 +19,7 @@ import { venues } from "./venues";
 import {
   MAX_STARS,
   type Records,
+  bestShow,
   isNewBest,
   recordAt,
   recordShow,
@@ -206,3 +207,42 @@ describe("star text", () => {
   });
 });
 
+describe("best show", () => {
+  it("is null with no records", () => {
+    expect(bestShow({}, venues)).toBeNull();
+  });
+
+  it("is null when no show has made money yet", () => {
+    // An old save gets stars for venues it has passed, but no money.
+    const records: Records = { "back-garden": { stars: 2, bestMoney: 0, bestCombo: 0 } };
+    expect(bestShow(records, venues)).toBeNull();
+  });
+
+  it("is the venue record with the most money", () => {
+    const records: Records = {
+      "back-garden": { stars: 3, bestMoney: 180, bestCombo: 12 },
+      "village-green": { stars: 1, bestMoney: 420, bestCombo: 5 },
+      "town-park": { stars: 0, bestMoney: 90, bestCombo: 2 },
+    };
+    expect(bestShow(records, venues)).toEqual({ venue: venues[1], money: 420 });
+  });
+
+  it("goes to the bigger venue on a tie", () => {
+    const records: Records = {
+      "back-garden": { stars: 3, bestMoney: 300, bestCombo: 12 },
+      "village-green": { stars: 1, bestMoney: 300, bestCombo: 5 },
+    };
+    expect(bestShow(records, venues)?.venue).toBe(venues[1]);
+  });
+
+  it("ignores records for venues it doesn't know", () => {
+    const records: Records = { "moon-base": { stars: 3, bestMoney: 9999, bestCombo: 50 } };
+    expect(bestShow(records, venues)).toBeNull();
+  });
+
+  it("follows recorded shows", () => {
+    const records: Records = {};
+    recordShow(records, "back-garden", show(8, 120, 9));
+    expect(bestShow(records, venues)).toEqual({ venue: venues[0], money: 120 });
+  });
+});
