@@ -61,6 +61,10 @@ export const POPUP_TEXT_HEIGHT = 26;
 export const POPUP_HALF_WIDTH = 70;
 /** Lowest point of the counts line that render.ts draws in the top left. */
 export const COUNTS_LINE_BOTTOM = 40;
+/** Lowest point of the weather word that render.ts draws under the counts line. */
+export const WEATHER_LINE_BOTTOM = 80;
+/** Right edge of the weather word, which sits beside the pause button. */
+export const WEATHER_LINE_RIGHT = 150;
 /** Space kept between a pop-up and the text above it. */
 export const POPUP_GAP = 8;
 
