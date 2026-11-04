@@ -27,3 +27,9 @@ describe("venues", () => {
     expect(nextVenue(venues[3])).toBeUndefined();
   });
 });
+
+describe("leaving a venue", () => {
+  it("takes 2 stars at every venue below the top", () => {
+    for (const venue of venues.slice(0, -1)) expect(venue.starsToLeave).toBe(2);
+  });
+});

@@ -1,3 +1,4 @@
+import { MAX_STARS, type NewBests, starsFor } from "../game/records";
 import { formatMoney } from "../money";
 import type { Summary } from "./stats";
 import { canvasMeasure, isNarrow, wrapText } from "./wrapText";
@@ -24,6 +25,34 @@ export function summaryRows(summary: Summary): [string, string][] {
   ];
 }
 
+/** No records beaten, for a summary drawn without them. */
+const NO_BESTS: NewBests = { stars: false, money: false, combo: false };
+
+/** The labels of the rows that beat a record, to mark "New best!". */
+export function newBestLabels(bests: NewBests): string[] {
+  const labels: string[] = [];
+  if (bests.combo) labels.push("Best combo");
+  if (bests.money) labels.push("Money earned");
+  return labels;
+}
+
+/** Seconds between one star popping in and the next. */
+const STAR_STAGGER = 0.18;
+/** Seconds each star takes to pop in. */
+const STAR_POP = 0.25;
+
+/**
+ * How big star `index` is drawn `time` seconds after the summary opened:
+ * 0 before it pops in, overshooting a little, then 1. The stars pop in one
+ * after another once the panel has faded in.
+ */
+export function starScale(index: number, time: number): number {
+  const t = (time - FADE_IN - index * STAR_STAGGER) / STAR_POP;
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  return t < 0.6 ? (t / 0.6) * 1.25 : 1.25 - ((t - 0.6) / 0.4) * 0.25;
+}
+
 /** Where the summary panel and its text go. */
 export interface SummaryLayout {
   left: number;
@@ -36,6 +65,10 @@ export interface SummaryLayout {
   lineSize: number;
   rowSize: number;
   rowHeight: number;
+  /** Middle of the row of stars. */
+  starsY: number;
+  /** Outer radius of each star. */
+  starRadius: number;
   /** Baseline of the first count row. */
   rowsTop: number;
   /**
@@ -47,6 +80,8 @@ export interface SummaryLayout {
 
 /** Line spacing when the rating line wraps. */
 const LINE_HEIGHT = 22;
+/** Height the row of stars adds to the panel. */
+const STARS_HEIGHT = 44;
 
 /**
  * Lays out the summary for `rows` count rows and a rating line that takes
@@ -62,7 +97,7 @@ export function summaryLayout(
   const rowHeight = 30;
   const extra = (lines - 1) * LINE_HEIGHT;
   const panelWidth = Math.min(420, width - 32);
-  const panelHeight = 170 + extra + rows * rowHeight + 60;
+  const panelHeight = 170 + extra + STARS_HEIGHT + rows * rowHeight + 60;
   const scale = Math.min(1, (height - 32) / panelHeight);
   const top = scale < 1 ? (height - panelHeight) / 2 : Math.max(16, (height - panelHeight) / 2);
   return {
@@ -75,14 +110,71 @@ export function summaryLayout(
     lineSize: narrow ? 15 : 17,
     rowSize: narrow ? 17 : 19,
     rowHeight,
-    rowsTop: top + 166 + extra,
+    starsY: top + 154 + extra,
+    starRadius: narrow ? 16 : 18,
+    rowsTop: top + 166 + extra + STARS_HEIGHT,
     scale,
   };
+}
+
+/** Draws a five-pointed star with its middle at (x, y). */
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  filled: boolean,
+): void {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? radius : radius * 0.45;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    ctx.lineTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r);
+  }
+  ctx.closePath();
+  if (filled) {
+    ctx.fillStyle = "#ffd166";
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = "#5a6088";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+/**
+ * The show's stars, popping in one by one, with "New best!" beside them
+ * when they beat the venue's record.
+ */
+function drawStars(
+  ctx: CanvasRenderingContext2D,
+  stars: number,
+  newBest: boolean,
+  layout: SummaryLayout,
+  centre: number,
+  time: number,
+): void {
+  const spacing = layout.starRadius * 2.5;
+  for (let i = 0; i < MAX_STARS; i++) {
+    const scale = starScale(i, time);
+    if (scale <= 0) continue;
+    const x = centre + (i - (MAX_STARS - 1) / 2) * spacing;
+    drawStar(ctx, x, layout.starsY, layout.starRadius * scale, i < stars);
+  }
+  if (newBest && starScale(MAX_STARS - 1, time) >= 1) {
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "bold 14px system-ui, sans-serif";
+    ctx.fillText("New best!", centre + spacing * 1.5 + 6, layout.starsY);
+    ctx.textBaseline = "alphabetic";
+  }
 }
 
 /**
  * Draws the end-of-show summary over the last frame of the show.
  * `time` is seconds since the summary opened and drives the fade-in.
+ * `bests` says which of the venue's records the show beat.
  */
 export function drawSummaryScreen(
   ctx: CanvasRenderingContext2D,
@@ -90,6 +182,7 @@ export function drawSummaryScreen(
   width: number,
   height: number,
   time: number,
+  bests: NewBests = NO_BESTS,
 ): void {
   const fade = Math.min(time / FADE_IN, 1);
 
@@ -139,15 +232,26 @@ export function drawSummaryScreen(
   ctx.font = lineFont(layout.lineSize);
   lines.forEach((line, i) => ctx.fillText(line, centre, top + 116 + i * LINE_HEIGHT));
 
-  ctx.font = `${layout.rowSize}px system-ui, sans-serif`;
+  drawStars(ctx, starsFor(summary), bests.stars, layout, centre, time);
+
+  const rowFont = `${layout.rowSize}px system-ui, sans-serif`;
+  const bestLabels = newBestLabels(bests);
   rows.forEach(([label, value], i) => {
     const y = layout.rowsTop + i * layout.rowHeight;
+    ctx.font = rowFont;
     ctx.textAlign = "left";
     ctx.fillStyle = "#c9cde6";
     ctx.fillText(label, left + pad, y);
     ctx.textAlign = "right";
-    ctx.fillStyle = "#f5f5f5";
-    ctx.fillText(value, left + panelWidth - pad, y);
+    const best = bestLabels.includes(label);
+    ctx.fillStyle = best ? "#ffd166" : "#f5f5f5";
+    const valueX = left + panelWidth - pad;
+    ctx.fillText(value, valueX, y);
+    if (best) {
+      const valueWidth = ctx.measureText(value).width;
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.fillText("New best!", valueX - valueWidth - 10, y - 1);
+    }
   });
 
   ctx.textAlign = "center";

@@ -5,6 +5,9 @@ import { fireworkTypes } from "../fireworks/registry";
 import { FREE_BATCH, createGameState, fireworksForShow, fitStock } from "./state";
 import { STARTER_REQUEST, createRequestProgress } from "./requests";
 import { venues } from "./venues";
+import { recordShow } from "./records";
+import { canUpgradeVenue } from "./shop";
+import { createStats, summarize } from "../polish/stats";
 
 function memoryStorage(): SaveStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -33,6 +36,11 @@ describe("save and load", () => {
         text: "Pop 2 Roman candles",
       },
       requestProgress: { count: 1, done: false },
+      records: {
+        "back-garden": { stars: 3, bestMoney: 120, bestCombo: 9 },
+        "village-green": { stars: 2, bestMoney: 410.5, bestCombo: 14 },
+        "town-park": { stars: 1, bestMoney: 80, bestCombo: 5 },
+      },
     };
     expect(saveGame(state, storage)).toBe(true);
     expect(loadGame(storage)).toEqual(state);
@@ -164,5 +172,64 @@ describe("parsing the booker's requests", () => {
   it("replaces bad progress with a fresh start", () => {
     const state = parseSave({ activeRequest: combo, requestProgress: { count: -1, done: "yes" } });
     expect(state.requestProgress).toEqual(createRequestProgress());
+  });
+});
+
+describe("parsing venue records", () => {
+  const good = { stars: 2, bestMoney: 75.5, bestCombo: 11 };
+
+  it("keeps valid records", () => {
+    const state = parseSave({ records: { "back-garden": good } });
+    expect(state.records).toEqual({ "back-garden": good });
+  });
+
+  it("gives a new save no records", () => {
+    expect(parseSave({ money: 5 }).records).toEqual({});
+  });
+
+  it("drops unknown venues and zeroes bad numbers", () => {
+    const state = parseSave({
+      records: {
+        moon: good,
+        "back-garden": { stars: 9, bestMoney: -3, bestCombo: "lots" },
+        "village-green": "three stars",
+      },
+    });
+    expect(state.records).toEqual({ "back-garden": { stars: 3, bestMoney: 0, bestCombo: 0 } });
+  });
+
+  it("counts venues below the current one as passed in old saves", () => {
+    const state = parseSave({ money: 5, venueId: "town-park" });
+    expect(state.records).toEqual({
+      "back-garden": { stars: 2, bestMoney: 0, bestCombo: 0 },
+      "village-green": { stars: 2, bestMoney: 0, bestCombo: 0 },
+    });
+  });
+
+  it("keeps better stars and the bests of venues already passed", () => {
+    const state = parseSave({
+      venueId: "village-green",
+      records: { "back-garden": { stars: 1, bestMoney: 60, bestCombo: 7 } },
+    });
+    expect(state.records["back-garden"]).toEqual({ stars: 2, bestMoney: 60, bestCombo: 7 });
+    expect(parseSave({ venueId: "village-green", records: { "back-garden": { ...good, stars: 3 } } })
+      .records["back-garden"].stars).toBe(3);
+  });
+
+  it("doesn't give stars at the current venue to an old save", () => {
+    const state = parseSave({ money: 100_000, venueId: "village-green" });
+    expect(state.records["village-green"]).toBeUndefined();
+    expect(canUpgradeVenue(state)).toBe("needs-stars");
+  });
+
+  it("lets an old save move on after one good show", () => {
+    const state = parseSave({ money: 100_000, venueId: "village-green" });
+    recordShow(state.records, state.venueId, {
+      ...summarize(createStats(), { showMoney: 0, bestCombo: 0 }),
+      launched: 10,
+      popped: 8,
+      hitRate: 0.8,
+    });
+    expect(canUpgradeVenue(state)).toBe("ok");
   });
 });

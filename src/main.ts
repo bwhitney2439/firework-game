@@ -1,4 +1,5 @@
 import { fireworkTypes } from "./fireworks/registry";
+import { type NewBests, recordShow } from "./game/records";
 import { loadGame, saveGame } from "./game/save";
 import { createShow } from "./game/show";
 import { currentVenue, fireworksForShow } from "./game/state";
@@ -56,6 +57,8 @@ const game = {
   show: createShow([]),
   scoring: createScoring(),
   stats: createStats(),
+  /** Which of the venue's records the last show beat, for its summary. */
+  bests: { stars: false, money: false, combo: false } as NewBests,
   /** Seconds since the current phase started. */
   phaseTime: 0,
 };
@@ -108,6 +111,18 @@ function quitShow(): void {
   goToShop();
 }
 
+/**
+ * Ends the show: keeps its stars and bests in the venue's records, once,
+ * saves, and opens the summary.
+ */
+function openSummary(): void {
+  const summary = summarize(game.stats, game.scoring.score);
+  game.bests = recordShow(game.state.records, game.state.venueId, summary);
+  saveGame(game.state);
+  setPhase("summary");
+  sound.cheer(summary.hitRate);
+}
+
 /** Where a click on the summary goes next. */
 function afterSummary(): void {
   goToShop();
@@ -147,7 +162,7 @@ canvas.addEventListener("pointerdown", (event) => {
       click,
       canvas.clientWidth,
       canvas.clientHeight,
-      () => window.confirm("Start a new game? Your money and venue will be lost."),
+      () => window.confirm("Start a new game? Your money, venue and stars will be lost."),
     );
     if (result === "start") startNextShow();
     else if (result === "changed") saveGame(game.state);
@@ -218,10 +233,7 @@ function frame(time: number): void {
       const scored = handleShowEvents(game.scoring, step.events, width, height);
       for (let i = 0; i < step.launched; i++) sound.launch();
       for (const event of scored) playEvent(event);
-      if (isSummaryDue(game.stats)) {
-        setPhase("summary");
-        sound.cheer(summarize(game.stats, game.scoring.score).hitRate);
-      }
+      if (isSummaryDue(game.stats)) openSummary();
     }
     if (game.phase !== "paused") updateScoring(game.scoring, dt);
     render(ctx, game.show, width, height);
@@ -235,6 +247,7 @@ function frame(time: number): void {
         width,
         height,
         game.phaseTime,
+        game.bests,
       );
     }
   }
