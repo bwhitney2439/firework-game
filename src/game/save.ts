@@ -1,5 +1,11 @@
 import { fireworkTypes } from "../fireworks/registry";
 import type { FireworkType } from "../fireworks/types";
+import {
+  type Request,
+  type RequestProgress,
+  createRequestProgress,
+  requestKinds,
+} from "./requests";
 import { type GameState, createGameState, fitStock } from "./state";
 import { venueById } from "./venues";
 
@@ -31,6 +37,36 @@ function parseCounts(data: unknown): Record<string, number> {
 }
 
 /**
+ * Reads a saved request, or null if it is not a whole, valid one. A
+ * "pop-type" request needs a type id from `types`.
+ */
+function parseRequest(data: unknown, types: FireworkType[]): Request | null {
+  if (typeof data !== "object" || data === null) return null;
+  const saved = data as Record<string, unknown>;
+  const kind = requestKinds.find((candidate) => candidate === saved.kind);
+  if (!kind) return null;
+  if (!isCount(saved.target) || saved.target < 1) return null;
+  if (!isCount(saved.reward)) return null;
+  if (typeof saved.text !== "string") return null;
+  const request: Request = { kind, target: saved.target, reward: saved.reward, text: saved.text };
+  if (kind === "pop-type") {
+    const typeId = saved.typeId;
+    if (typeof typeId !== "string" || !types.some((type) => type.id === typeId)) return null;
+    request.typeId = typeId;
+  }
+  return request;
+}
+
+function parseProgress(data: unknown): RequestProgress {
+  const progress = createRequestProgress();
+  if (typeof data !== "object" || data === null) return progress;
+  const saved = data as Record<string, unknown>;
+  if (isCount(saved.count)) progress.count = saved.count;
+  if (typeof saved.done === "boolean") progress.done = saved.done;
+  return progress;
+}
+
+/**
  * Turns parsed JSON into a valid state. Bad or missing fields get defaults,
  * and the stock is made to fit the venue (see fitStock).
  */
@@ -48,6 +84,9 @@ export function parseSave(
   }
   state.stock = parseCounts(saved.stock);
   state.lockedStock = parseCounts(saved.lockedStock);
+  state.request = parseRequest(saved.request, types) ?? state.request;
+  state.activeRequest = parseRequest(saved.activeRequest, types);
+  if (state.activeRequest) state.requestProgress = parseProgress(saved.requestProgress);
   fitStock(state, types);
   return state;
 }

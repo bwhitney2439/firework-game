@@ -1,5 +1,12 @@
 import { basicRocket } from "../fireworks/basicRocket";
 import type { FireworkType } from "../fireworks/types";
+import {
+  type Request,
+  type RequestProgress,
+  STARTER_REQUEST,
+  createRequestProgress,
+  pickRequest,
+} from "./requests";
 import { type Venue, venueById, venues } from "./venues";
 
 /** Basic rockets given free at the start of every show. */
@@ -24,10 +31,24 @@ export interface GameState {
    * turn a firework that was about to fizzle back into money.
    */
   lockedStock: Record<string, number>;
+  /** The booker's request for the next show, shown in the shop. */
+  request: Request;
+  /** The request for the show being played, or null before the first show. */
+  activeRequest: Request | null;
+  /** How far the active request has got, and whether it has paid. */
+  requestProgress: RequestProgress;
 }
 
 export function createGameState(): GameState {
-  return { money: 0, venueId: venues[0].id, stock: {}, lockedStock: {} };
+  return {
+    money: 0,
+    venueId: venues[0].id,
+    stock: {},
+    lockedStock: {},
+    request: { ...STARTER_REQUEST },
+    activeRequest: null,
+    requestProgress: createRequestProgress(),
+  };
 }
 
 export function currentVenue(state: GameState): Venue {
@@ -91,6 +112,8 @@ export function fitStock(state: GameState, types: FireworkType[]): number {
  * The fireworks for the next show: the free batch with the bought stock
  * mixed in. The stock is not used up here; useFirework takes each one out
  * as it pops or fizzles. All of it is locked, so none can be sold back.
+ * The shop's request becomes the show's active request, and the next one
+ * is picked for the shop after the show.
  */
 export function fireworksForShow(
   state: GameState,
@@ -111,6 +134,10 @@ export function fireworksForShow(
     const j = Math.floor(random() * (i + 1));
     [fireworks[i], fireworks[j]] = [fireworks[j], fireworks[i]];
   }
+
+  state.activeRequest = state.request;
+  state.requestProgress = createRequestProgress();
+  state.request = pickRequest(state, types, random, state.activeRequest.kind);
   return fireworks;
 }
 
