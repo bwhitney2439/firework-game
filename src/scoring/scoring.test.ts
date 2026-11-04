@@ -127,7 +127,7 @@ describe("missed clicks", () => {
 
     expect(scoring.score.crowd).toBeCloseTo(crowd - MISS_CROWD_LOSS);
     expect(scoring.score.showMoney).toBe(0);
-    expect(scoring.popups.map((popup) => [popup.text, popup.style])).toEqual([["Whiff", "groan"]]);
+    expect(scoring.popups.map((popup) => [popup.text, popup.style])).toEqual([["Whiff", "whiff"]]);
     expect(scoring.puffs).toEqual([{ at: { x: 300, y: 400 }, age: 0 }]);
     expect(heard).toEqual([]);
   });
