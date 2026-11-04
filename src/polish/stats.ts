@@ -2,6 +2,7 @@ import {
   BURST_DURATION,
   type Show,
   type ShowEvent,
+  isAvoid,
   isShowOver,
   isStar,
   updateShow,
@@ -23,6 +24,11 @@ export interface ShowStats {
    * the stock, so they don't count in `popped` or the hit rate.
    */
   bonusStars: number;
+  /**
+   * Sky lanterns that were popped. They aren't launched from the stock, so
+   * they don't count as launched, popped or fizzled, or in the hit rate.
+   */
+  lanternsPopped: number;
   /** Clicks that hit nothing while fireworks were in the air. */
   missedClicks: number;
   /** Seconds since the show ended. Zero while it is running. */
@@ -35,13 +41,15 @@ export function createStats(): ShowStats {
     popped: 0,
     fizzled: 0,
     bonusStars: 0,
+    lanternsPopped: 0,
     missedClicks: 0,
     overFor: 0,
   };
 }
 
 export function recordEvent(stats: ShowStats, event: ShowEvent): void {
-  if (event.kind === "popped" && isStar(event.firework)) stats.bonusStars++;
+  if (event.kind === "popped" && isAvoid(event.firework)) stats.lanternsPopped++;
+  else if (event.kind === "popped" && isStar(event.firework)) stats.bonusStars++;
   else if (event.kind === "popped") stats.popped++;
   else stats.fizzled++;
 }
@@ -87,6 +95,8 @@ export interface Summary {
   fizzled: number;
   /** Crossette stars popped. Not part of the hit rate. */
   bonusStars: number;
+  /** Sky lanterns popped. Not part of the hit rate. */
+  lanternsPopped: number;
   missedClicks: number;
   /** Share of launched fireworks that were popped, from 0 to 1. */
   hitRate: number;
@@ -138,6 +148,7 @@ export function summarize(stats: ShowStats, score: ShowScore): Summary {
     popped: stats.popped,
     fizzled: stats.fizzled,
     bonusStars: stats.bonusStars,
+    lanternsPopped: stats.lanternsPopped,
     missedClicks: stats.missedClicks,
     hitRate,
     money: score.showMoney,

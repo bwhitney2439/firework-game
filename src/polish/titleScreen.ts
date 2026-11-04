@@ -34,6 +34,7 @@ const FONT = "system-ui, sans-serif";
 const LINE_COLOURS: Record<TitleLine["kind"], string> = {
   title: "#ffd166",
   subtitle: "#f5f5f5",
+  lantern: "#ffb347",
   start: "#f5f5f5",
   sound: "#9aa3c7",
 };
@@ -44,7 +45,7 @@ export interface TitleLine {
   /** CSS font the line is drawn and measured in. */
   font: string;
   y: number;
-  kind: "title" | "subtitle" | "start" | "sound";
+  kind: "title" | "subtitle" | "lantern" | "start" | "sound";
 }
 
 /**
@@ -75,6 +76,7 @@ export function titleLayout(
     y + size * 0.9,
     "subtitle",
   );
+  y = add("Don't pop the sky lanterns!", `bold ${subtitleSize}px ${FONT}`, y + subtitleSize * 1.6, "lantern");
   y = add("Click to start", `bold 24px ${FONT}`, y + 56, "start");
   add(`Press M to turn sound ${muted ? "on" : "off"}`, `15px ${FONT}`, y + 34, "sound");
   return lines;

@@ -1,5 +1,5 @@
 import type { Firework, ShowEvent } from "../game/show";
-import { flightProgress } from "../game/show";
+import { flightProgress, isAvoid } from "../game/show";
 import {
   AAH_PROGRESS,
   COMBO_FACTOR_MAX,
@@ -13,6 +13,7 @@ import {
   CROWD_START,
   HEIGHT_FACTOR_HIGH,
   HEIGHT_FACTOR_LOW,
+  LANTERN_CROWD_LOSS,
   MISS_BREAKS_COMBO,
   MISS_CROWD_LOSS,
   MONEY_PER_BASE_VALUE,
@@ -57,7 +58,8 @@ export interface PopScore {
   combo: number;
   /** Crowd meter after the pop. */
   crowd: number;
-  cheer: "Ooh" | "Aah";
+  /** "Boo" for something that should not have been popped, such as a lantern. */
+  cheer: "Ooh" | "Aah" | "Boo";
 }
 
 export interface FizzleScore {
@@ -134,6 +136,7 @@ export function crowdMultiplier(crowd: number): number {
 
 /** Scores a popped firework: works out its money and raises the crowd. */
 export function scorePop(score: ScoreState, firework: Firework): PopScore {
+  if (isAvoid(firework)) return scoreAvoidPop(score, firework);
   const height = clamp(flightProgress(firework), 0, 1);
 
   const inCombo =
@@ -172,6 +175,29 @@ export function scorePop(score: ScoreState, firework: Firework): PopScore {
     combo: score.combo,
     crowd: score.crowd,
     cheer: height >= AAH_PROGRESS ? "Aah" : "Ooh",
+  };
+}
+
+/**
+ * Popping something the player should have left, such as a sky lantern:
+ * it pays nothing, lowers the crowd and ends the combo. Its combo is 0, so
+ * the cheer sound stays quiet and no combo request moves.
+ */
+export function scoreAvoidPop(score: ScoreState, firework: Firework): PopScore {
+  score.combo = 0;
+  score.lastPopTime = null;
+  score.crowd = clamp(score.crowd - LANTERN_CROWD_LOSS, 0, 1);
+  return {
+    money: 0,
+    height: clamp(flightProgress(firework), 0, 1),
+    heightFactor: 0,
+    speedFactor: 0,
+    comboFactor: 0,
+    crowdMultiplier: crowdMultiplier(score.crowd),
+    moneyMultiplier: score.moneyMultiplier,
+    combo: 0,
+    crowd: score.crowd,
+    cheer: "Boo",
   };
 }
 
