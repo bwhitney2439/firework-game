@@ -186,3 +186,33 @@ describe("using a firework", () => {
     expect(state.stock).toEqual({ sparkler: 1 });
   });
 });
+
+describe("the booker's request", () => {
+  it("moves to the show when it starts, and a new one is picked for the shop", () => {
+    const state = createGameState();
+    const shown = state.request;
+    state.requestProgress = { count: 3, done: true };
+    fireworksForShow(state, [basicRocket, sparkler], first);
+
+    expect(state.activeRequest).toEqual(shown);
+    expect(state.requestProgress).toEqual({ count: 0, done: false });
+    expect(state.request.kind).not.toBe(shown.kind);
+  });
+
+  it("is new after every show, whether it was met or not", () => {
+    const state = createGameState();
+    for (let show = 0; show < 4; show++) {
+      const before = state.request;
+      fireworksForShow(state, [basicRocket, sparkler], () => 0.7);
+      expect(state.activeRequest).toBe(before);
+      expect(state.request).not.toBe(before);
+      expect(state.request.kind).not.toBe(before.kind);
+    }
+  });
+
+  it("stays plain data that survives JSON", () => {
+    const state = createGameState();
+    fireworksForShow(state, [basicRocket, sparkler], first);
+    expect(JSON.parse(JSON.stringify(state))).toEqual(state);
+  });
+});

@@ -50,6 +50,38 @@ function panelWidth(width: number): number {
 
 /** Top of the first firework row. */
 const LIST_TOP = 250;
+/** Height of the booker's request card under the firework list. */
+const CARD_HEIGHT = 60;
+/** Space between the request card and what is above and below it. */
+const CARD_GAP = 14;
+
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Where the start button goes, so the request card can stay clear of it. */
+function startButtonBox(width: number, height: number): Box {
+  return { x: width / 2 - 110, y: height - 80, width: 220, height: 48 };
+}
+
+/**
+ * Where the booker's request card goes: between the firework list and the
+ * Start button. Null when the screen is too short for it.
+ */
+export function requestCardBox(
+  types: FireworkType[],
+  width: number,
+  height: number,
+): Box | null {
+  const left = panelLeft(width);
+  const rows = Math.max(1, shopItems(types).length);
+  const y = LIST_TOP + rows * ROW_HEIGHT + CARD_GAP;
+  if (y + CARD_HEIGHT + CARD_GAP > startButtonBox(width, height).y) return null;
+  return { x: left, y, width: panelWidth(width), height: CARD_HEIGHT };
+}
 
 /** Every button on the shop screen, with where it is drawn. */
 export function shopButtons(
@@ -96,10 +128,7 @@ export function shopButtons(
   });
 
   buttons.push({
-    x: width / 2 - 110,
-    y: height - 80,
-    width: 220,
-    height: 48,
+    ...startButtonBox(width, height),
     label: "Start show",
     enabled: true,
     action: { kind: "start" },
@@ -244,8 +273,36 @@ export function drawShop(
     ctx.fillText(`× ${state.stock[type.id] ?? 0}`, right - 156, top + ROW_HEIGHT / 2);
   });
 
+  const card = requestCardBox(types, width, height);
+  if (card) drawRequestCard(ctx, state, card);
+
   for (const button of shopButtons(state, types, width, height)) {
     drawButton(ctx, button);
   }
   ctx.textBaseline = "alphabetic";
+}
+
+/** The booker's request for the next show, with its reward. */
+function drawRequestCard(ctx: CanvasRenderingContext2D, state: GameState, card: Box): void {
+  ctx.fillStyle = "#2a2410";
+  ctx.strokeStyle = "#ffd166";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(card.x, card.y, card.width, card.height, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  const middle = card.y + card.height / 2;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffd166";
+  ctx.font = `bold 13px ${FONT}`;
+  ctx.fillText(`The ${currentVenue(state).name} booker asks:`, card.x + 14, middle - 11);
+  ctx.fillStyle = "#f5f5f5";
+  ctx.font = `17px ${FONT}`;
+  ctx.fillText(state.request.text, card.x + 14, middle + 10);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#ffd166";
+  ctx.font = `bold 17px ${FONT}`;
+  ctx.fillText(`Reward ${formatMoney(state.request.reward)}`, card.x + card.width - 14, middle);
 }

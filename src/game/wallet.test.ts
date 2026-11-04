@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
-import { createScoring, handleShowEvents } from "../scoring/scoring";
-import { clickAt, createShow, fireworkPosition, updateShow } from "./show";
+import { fireworkTypes } from "../fireworks/registry";
+import { createScoring, handleShowEvents, type Scoring } from "../scoring/scoring";
+import type { Request } from "./requests";
+import { clickAt, createShow, fireworkPosition, isShowOver, updateShow } from "./show";
 import type { FireworkType } from "../fireworks/types";
 import { parseSave } from "./save";
 import { buyFirework, refundFirework } from "./shop";
@@ -133,5 +135,112 @@ describe("bought stock during a show", () => {
     state.stock.sparkler = 1;
     popOne(state, [], basicRocket);
     expect(state.stock).toEqual({ sparkler: 1 });
+  });
+});
+
+describe("the booker's request during a show", () => {
+  const twoPops: Request = {
+    kind: "pop-type",
+    target: 2,
+    typeId: basicRocket.id,
+    reward: 40,
+    text: "Pop 2 Basic rockets",
+  };
+
+  /** A state whose active request is `request`, as at the start of a show. */
+  function withRequest(request = twoPops): GameState {
+    return { ...createGameState(), activeRequest: { ...request } };
+  }
+
+  /** Pops `count` basic rockets in a show that is already scoring. */
+  function popMore(scoring: Scoring, count: number) {
+    const show = createShow(Array.from({ length: count }, () => basicRocket));
+    const scored = [];
+    for (let i = 0; i < count; i++) {
+      updateShow(show, 1, middle);
+      const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+      scored.push(...handleShowEvents(scoring, [clickAt(show, at, WIDTH, HEIGHT)], WIDTH, HEIGHT));
+    }
+    return scored;
+  }
+
+  function startShow(state: GameState, saves: GameState[] = []): Scoring {
+    const scoring = createScoring();
+    settleScoredEvents(scoring, state, (saved) => saves.push(structuredClone(saved)));
+    startScoringAtVenue(scoring, state);
+    return scoring;
+  }
+
+  const golds = (scoring: Scoring) => scoring.popups.filter((popup) => popup.style === "gold");
+  const popMoney = (scored: ReturnType<typeof popMore>) =>
+    scored.reduce((sum, event) => sum + (event.kind === "popped" ? event.score.money : 0), 0);
+
+  it("pays the reward at once with a gold pop-up when it is met", () => {
+    const state = withRequest();
+    const scoring = startShow(state);
+    const first = popMore(scoring, 1);
+    expect(state.money).toBe(popMoney(first));
+    expect(golds(scoring)).toHaveLength(0);
+
+    const second = popMore(scoring, 1);
+    expect(state.money).toBe(popMoney([...first, ...second]) + 40);
+    expect(state.requestProgress.done).toBe(true);
+    expect(golds(scoring).map((popup) => popup.text)).toEqual(["Request done! +£40"]);
+  });
+
+  it("pays once, even after more pops", () => {
+    const state = withRequest();
+    const scoring = startShow(state);
+    const scored = popMore(scoring, 5);
+    expect(state.money).toBe(popMoney(scored) + 40);
+    expect(golds(scoring)).toHaveLength(1);
+  });
+
+  it("keeps the progress over a reload mid-show and doesn't pay a second time", () => {
+    const saves: GameState[] = [];
+    const state = withRequest();
+    popMore(startShow(state, saves), 1);
+    const halfway = parseSave(JSON.parse(JSON.stringify(saves.at(-1))));
+    expect(halfway.activeRequest).toEqual(twoPops);
+    expect(halfway.requestProgress).toEqual({ count: 1, done: false });
+
+    popMore(startShow(state, saves), 1);
+    const paid = parseSave(JSON.parse(JSON.stringify(saves.at(-1))));
+    expect(paid.requestProgress.done).toBe(true);
+    const money = paid.money;
+    const scoring = startShow(paid);
+    const more = popMore(scoring, 3);
+    expect(paid.money).toBe(money + popMoney(more));
+    expect(golds(scoring)).toHaveLength(0);
+  });
+
+  it("does nothing without an active request", () => {
+    const state = createGameState();
+    const scoring = startShow(state);
+    const scored = popMore(scoring, 6);
+    expect(state.money).toBe(popMoney(scored));
+    expect(golds(scoring)).toHaveLength(0);
+  });
+
+  it("goes to the next show from the shop's request", () => {
+    const state = createGameState();
+    const shown = state.request;
+    const show = createShow(fireworksForShow(state, fireworkTypes, middle));
+    const scoring = startShow(state);
+    while (!isShowOver(show)) {
+      const events = updateShow(show, 0.25, middle);
+      handleShowEvents(scoring, events, WIDTH, HEIGHT);
+      for (const firework of [...show.active]) {
+        handleShowEvents(
+          scoring,
+          [clickAt(show, fireworkPosition(firework, WIDTH, HEIGHT), WIDTH, HEIGHT)],
+          WIDTH,
+          HEIGHT,
+        );
+      }
+    }
+    expect(state.activeRequest).toBe(shown);
+    expect(state.requestProgress.done).toBe(true);
+    expect(golds(scoring)).toHaveLength(1);
   });
 });

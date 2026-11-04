@@ -3,6 +3,7 @@ import { SAVE_KEY, type SaveStorage, clearSave, loadGame, parseSave, saveGame } 
 import { basicRocket } from "../fireworks/basicRocket";
 import { fireworkTypes } from "../fireworks/registry";
 import { FREE_BATCH, createGameState, fireworksForShow, fitStock } from "./state";
+import { STARTER_REQUEST, createRequestProgress } from "./requests";
 import { venues } from "./venues";
 
 function memoryStorage(): SaveStorage & { data: Map<string, string> } {
@@ -23,6 +24,15 @@ describe("save and load", () => {
       venueId: "town-park",
       stock: { "roman-candle": 3 },
       lockedStock: { "roman-candle": 2 },
+      request: { kind: "combo" as const, target: 8, reward: 100, text: "Reach a combo of 8" },
+      activeRequest: {
+        kind: "pop-type" as const,
+        target: 2,
+        typeId: "roman-candle",
+        reward: 100,
+        text: "Pop 2 Roman candles",
+      },
+      requestProgress: { count: 1, done: false },
     };
     expect(saveGame(state, storage)).toBe(true);
     expect(loadGame(storage)).toEqual(state);
@@ -110,5 +120,49 @@ describe("parsing a save", () => {
   it("gives defaults for non-objects", () => {
     expect(parseSave(null)).toEqual(createGameState());
     expect(parseSave(3)).toEqual(createGameState());
+  });
+});
+
+describe("parsing the booker's requests", () => {
+  const combo = { kind: "combo", target: 4, reward: 40, text: "Reach a combo of 4" };
+
+  it("gives old saves without them the starter request", () => {
+    const state = parseSave({ money: 5, venueId: "village-green", stock: {} });
+    expect(state.request).toEqual(STARTER_REQUEST);
+    expect(state.activeRequest).toBeNull();
+    expect(state.requestProgress).toEqual(createRequestProgress());
+  });
+
+  it("keeps a valid request, active request and progress", () => {
+    const state = parseSave({
+      request: combo,
+      activeRequest: { ...combo, target: 6 },
+      requestProgress: { count: 6, done: true },
+    });
+    expect(state.request).toEqual(combo);
+    expect(state.activeRequest).toEqual({ ...combo, target: 6 });
+    expect(state.requestProgress).toEqual({ count: 6, done: true });
+  });
+
+  it("replaces bad requests with defaults", () => {
+    for (const bad of [
+      "combo",
+      { ...combo, kind: "juggle" },
+      { ...combo, target: 0 },
+      { ...combo, reward: -5 },
+      { ...combo, text: 3 },
+      { kind: "pop-type", target: 2, reward: 40, text: "Pop 2" },
+      { kind: "pop-type", target: 2, typeId: "retired", reward: 40, text: "Pop 2 Retired" },
+    ]) {
+      const state = parseSave({ request: bad, activeRequest: bad, requestProgress: { count: 2 } });
+      expect(state.request).toEqual(STARTER_REQUEST);
+      expect(state.activeRequest).toBeNull();
+      expect(state.requestProgress).toEqual(createRequestProgress());
+    }
+  });
+
+  it("replaces bad progress with a fresh start", () => {
+    const state = parseSave({ activeRequest: combo, requestProgress: { count: -1, done: "yes" } });
+    expect(state.requestProgress).toEqual(createRequestProgress());
   });
 });

@@ -9,7 +9,7 @@ import {
   POPUP_TEXT_HEIGHT,
 } from "./tuning";
 
-export type PopupStyle = "cheer" | "money" | "groan";
+export type PopupStyle = "cheer" | "money" | "groan" | "gold";
 
 /** Floating text over a burst, such as "Aah!" or "+£12". */
 export interface Popup {
@@ -56,6 +56,7 @@ const STYLES: Record<PopupStyle, { font: string; color: string }> = {
   cheer: { font: "bold 26px system-ui, sans-serif", color: "#fff3b0" },
   money: { font: "bold 20px system-ui, sans-serif", color: "#7ee081" },
   groan: { font: "italic 20px system-ui, sans-serif", color: "#9aa3c7" },
+  gold: { font: "bold 24px system-ui, sans-serif", color: "#ffd166" },
 };
 
 export function drawPopups(ctx: CanvasRenderingContext2D, popups: Popup[]): void {
