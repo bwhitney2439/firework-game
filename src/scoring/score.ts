@@ -13,6 +13,8 @@ import {
   CROWD_START,
   HEIGHT_FACTOR_HIGH,
   HEIGHT_FACTOR_LOW,
+  MISS_BREAKS_COMBO,
+  MISS_CROWD_LOSS,
   MONEY_PER_BASE_VALUE,
   REFERENCE_RISE_SPEED,
   SPEED_FACTOR_MAX,
@@ -62,6 +64,13 @@ export interface FizzleScore {
   /** Crowd meter after the fizzle. */
   crowd: number;
   /** Length of the combo that the fizzle broke. */
+  lostCombo: number;
+}
+
+export interface MissScore {
+  /** Crowd meter after the miss. */
+  crowd: number;
+  /** Length of the combo that the miss broke, or 0 if it broke none. */
   lostCombo: number;
 }
 
@@ -172,6 +181,21 @@ export function scoreFizzle(score: ScoreState): FizzleScore {
   score.combo = 0;
   score.lastPopTime = null;
   score.crowd = clamp(score.crowd - CROWD_FIZZLE_LOSS, 0, 1);
+  return { crowd: score.crowd, lostCombo };
+}
+
+/**
+ * A click that hit nothing earns nothing, lowers the crowd a little and
+ * (with MISS_BREAKS_COMBO) ends the combo, so mashing the mouse costs.
+ */
+export function scoreMiss(score: ScoreState): MissScore {
+  let lostCombo = 0;
+  if (MISS_BREAKS_COMBO) {
+    lostCombo = score.combo;
+    score.combo = 0;
+    score.lastPopTime = null;
+  }
+  score.crowd = clamp(score.crowd - MISS_CROWD_LOSS, 0, 1);
   return { crowd: score.crowd, lostCombo };
 }
 

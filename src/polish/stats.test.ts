@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
+import { crossette } from "../fireworks/crossette";
 import {
   LAUNCH_INTERVAL,
   type ShowEvent,
   clickAt,
   createShow,
+  fireworkPosition,
 } from "../game/show";
 import {
   SUMMARY_DELAY,
@@ -113,5 +115,48 @@ describe("summary", () => {
     expect(rate(0.1, 10).title).toBe("A damp squib");
     expect(rate(0, 10).title).toBe("Total washout");
     expect(rate(0, 0).title).toBe("No show tonight");
+  });
+});
+
+describe("crossette stars", () => {
+  /** Plays a show of crossettes, popping each one and all of its stars. */
+  function popEverything(count: number) {
+    const show = createShow(Array.from({ length: count }, () => crossette));
+    const stats = createStats();
+    const popFirst = () => {
+      const at = fireworkPosition(show.active[0], 1000, 800);
+      recordEvent(stats, clickAt(show, at, 1000, 800)!);
+    };
+    for (let i = 0; i < count; i++) {
+      stepShow(show, stats, i === 0 ? 0.5 : LAUNCH_INTERVAL, middle);
+      popFirst();
+      while (show.active.length > 0) popFirst();
+    }
+    return stats;
+  }
+
+  it("counts star pops as bonus stars, not as pops", () => {
+    const stats = popEverything(1);
+    expect(stats.launched).toBe(1);
+    expect(stats.popped).toBe(1);
+    expect(stats.bonusStars).toBe(crossette.split!.count);
+    expect(summarize(stats, noScore).bonusStars).toBe(crossette.split!.count);
+  });
+
+  it("never takes the hit rate over 1", () => {
+    const summary = summarize(popEverything(3), noScore);
+    expect(summary.hitRate).toBe(1);
+    expect(summary.rating.title).toBe("Perfect show!");
+  });
+
+  it("doesn't count stars that fade as fizzles", () => {
+    const show = createShow([crossette]);
+    const stats = createStats();
+    stepShow(show, stats, 0.5, middle);
+    const at = fireworkPosition(show.active[0], 1000, 800);
+    recordEvent(stats, clickAt(show, at, 1000, 800)!);
+    stepShow(show, stats, 5, middle);
+    expect(stats.fizzled).toBe(0);
+    expect(summarize(stats, noScore).hitRate).toBe(1);
   });
 });
