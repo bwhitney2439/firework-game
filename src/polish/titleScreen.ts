@@ -1,6 +1,7 @@
 import { basicRocket } from "../fireworks/basicRocket";
 import type { Point } from "../fireworks/types";
 import { drawBonfire, hash } from "./scenery";
+import { type Measure, canvasMeasure, isNarrow, wrapText } from "./wrapText";
 
 /** Seconds each decorative burst on the title screen takes. */
 const BURST_CYCLE = 2.4;
@@ -29,6 +30,56 @@ export function titleBurst(
   };
 }
 
+const FONT = "system-ui, sans-serif";
+const LINE_COLOURS: Record<TitleLine["kind"], string> = {
+  title: "#ffd166",
+  subtitle: "#f5f5f5",
+  start: "#f5f5f5",
+  sound: "#9aa3c7",
+};
+
+/** One line of text on the title screen. */
+export interface TitleLine {
+  text: string;
+  /** CSS font the line is drawn and measured in. */
+  font: string;
+  y: number;
+  kind: "title" | "subtitle" | "start" | "sound";
+}
+
+/**
+ * The title screen's text, wrapped to fit `width` and laid out from
+ * 42% of the way down. Phones get a smaller subtitle.
+ */
+export function titleLayout(
+  width: number,
+  height: number,
+  muted: boolean,
+  measure: Measure,
+): TitleLine[] {
+  const maxWidth = width - 32;
+  const size = Math.max(28, Math.min(64, width / 12));
+  const subtitleSize = isNarrow(width) ? 17 : 20;
+  const lines: TitleLine[] = [];
+  const add = (text: string, font: string, y: number, kind: TitleLine["kind"]) => {
+    const wrapped = wrapText(text, maxWidth, font, measure);
+    const spacing = kind === "title" ? size * 1.1 : subtitleSize * 1.3;
+    wrapped.forEach((line, i) => lines.push({ text: line, font, y: y + i * spacing, kind }));
+    return y + (wrapped.length - 1) * spacing;
+  };
+
+  let y = add("Bonfire Night Popper", `bold ${size}px ${FONT}`, height * 0.42, "title");
+  y = add(
+    "Click the fireworks to pop them before they fizzle out",
+    `${subtitleSize}px ${FONT}`,
+    y + size * 0.9,
+    "subtitle",
+  );
+  y = add("Click to start", `bold 24px ${FONT}`, y + 56, "start");
+  add(`Press M to turn sound ${muted ? "on" : "off"}`, `15px ${FONT}`, y + 34, "sound");
+  return lines;
+}
+
 /** Draws the title screen. `time` is in seconds and drives the animation. */
 export function drawTitleScreen(
   ctx: CanvasRenderingContext2D,
@@ -53,30 +104,12 @@ export function drawTitleScreen(
   ctx.fillRect(0, ground, width, height - ground);
   drawBonfire(ctx, width / 2, ground, time);
 
-  const size = Math.max(28, Math.min(64, width / 12));
   ctx.textAlign = "center";
-  ctx.fillStyle = "#ffd166";
-  ctx.font = `bold ${size}px system-ui, sans-serif`;
-  ctx.fillText("Bonfire Night Popper", width / 2, height * 0.42);
-
-  ctx.fillStyle = "#f5f5f5";
-  ctx.font = "20px system-ui, sans-serif";
-  ctx.fillText(
-    "Click the fireworks to pop them before they fizzle out",
-    width / 2,
-    height * 0.42 + size * 0.9,
-  );
-
-  ctx.globalAlpha = 0.6 + Math.sin(time * 4) * 0.4;
-  ctx.font = "bold 24px system-ui, sans-serif";
-  ctx.fillText("Click to start", width / 2, height * 0.42 + size * 0.9 + 56);
+  for (const line of titleLayout(width, height, muted, canvasMeasure(ctx))) {
+    ctx.globalAlpha = line.kind === "start" ? 0.6 + Math.sin(time * 4) * 0.4 : 1;
+    ctx.fillStyle = LINE_COLOURS[line.kind];
+    ctx.font = line.font;
+    ctx.fillText(line.text, width / 2, line.y);
+  }
   ctx.globalAlpha = 1;
-
-  ctx.fillStyle = "#9aa3c7";
-  ctx.font = "15px system-ui, sans-serif";
-  ctx.fillText(
-    `Press M to turn sound ${muted ? "on" : "off"}`,
-    width / 2,
-    height * 0.42 + size * 0.9 + 90,
-  );
 }
