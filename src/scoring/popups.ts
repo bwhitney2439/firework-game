@@ -7,6 +7,8 @@ import {
   POPUP_HALF_WIDTH,
   POPUP_RISE,
   POPUP_TEXT_HEIGHT,
+  WEATHER_LINE_BOTTOM,
+  WEATHER_LINE_RIGHT,
 } from "./tuning";
 
 /**
@@ -26,12 +28,17 @@ export interface Popup {
 
 /**
  * Where a pop-up for something at `at` starts. It is moved down if needed so
- * that, after drifting up, it stays below the counts line in the top left and
- * below the HUD in the top right.
+ * that, after drifting up, it stays below the counts line, below the weather
+ * word in the top left corner and below the HUD in the top right.
  */
 export function popupAnchor(at: Point, width: number): Point {
   const underHud = at.x > width - HUD_WIDTH - POPUP_HALF_WIDTH;
-  const clearOf = underHud ? HUD_BOTTOM : COUNTS_LINE_BOTTOM;
+  const underWeather = at.x < WEATHER_LINE_RIGHT + POPUP_HALF_WIDTH;
+  const clearOf = Math.max(
+    COUNTS_LINE_BOTTOM,
+    underHud ? HUD_BOTTOM : 0,
+    underWeather ? WEATHER_LINE_BOTTOM : 0,
+  );
   const lowest = clearOf + POPUP_GAP + POPUP_TEXT_HEIGHT + POPUP_RISE;
   return { x: at.x, y: Math.max(at.y, lowest) };
 }
