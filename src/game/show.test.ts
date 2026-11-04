@@ -258,3 +258,100 @@ describe("split fireworks", () => {
     expect(isStar({ type: basicRocket, launchX: 0.5, age: 1 })).toBe(false);
   });
 });
+
+describe("weather", () => {
+  const windyRight = () => {
+    const values = [0.01, 0.9, 1];
+    let i = 0;
+    return () => values[i++];
+  };
+
+  function windyShow(stock = [basicRocket]) {
+    const show = createShow(stock, windyRight());
+    expect(show.weather).toBe("windy");
+    return show;
+  }
+
+  it("is clear without a random, as before", () => {
+    const show = createShow([basicRocket]);
+    expect(show.weather).toBe("clear");
+    expect(show.windStrength).toBe(0);
+    updateShow(show, 1, middle);
+    expect(show.active[0]).toEqual({ type: basicRocket, launchX: 0.5, age: 1 });
+  });
+
+  it("picks the same weather for the same random", () => {
+    for (const roll of [0.05, 0.2, 0.6]) {
+      const a = createShow([basicRocket], () => roll);
+      const b = createShow([basicRocket], () => roll);
+      expect([a.weather, a.windStrength]).toEqual([b.weather, b.windStrength]);
+    }
+    expect(createShow([], () => 0.2).weather).toBe("drizzle");
+    expect(createShow([], () => 0.6).weather).toBe("clear");
+  });
+
+  it("plays a clear night from a random exactly like one without", () => {
+    const picked = createShow([basicRocket], () => 0.9);
+    const plain = createShow([basicRocket]);
+    updateShow(picked, 1.5, middle);
+    updateShow(plain, 1.5, middle);
+    expect(picked.active).toEqual(plain.active);
+  });
+
+  it("blows a firework sideways as it climbs", () => {
+    const show = windyShow();
+    expect(show.windStrength).toBeGreaterThan(0);
+    updateShow(show, 0.5, middle);
+    const before = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+    updateShow(show, 1, middle);
+    const after = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+    expect(after.x).toBeGreaterThan(before.x);
+    expect(after.y).toBeLessThan(before.y);
+  });
+
+  it("keeps a drifting firework inside the side margins", () => {
+    for (const roll of [0, 1]) {
+      const show = createShow([basicRocket], () => 0.01);
+      show.windStrength = roll === 0 ? -0.5 : 0.5;
+      updateShow(show, 0.01, () => roll);
+      for (let t = 0; t < flightTime - 0.1; t += 0.25) {
+        const { x } = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+        expect(x).toBeGreaterThanOrEqual(WIDTH * 0.1);
+        expect(x).toBeLessThanOrEqual(WIDTH * 0.9);
+        updateShow(show, 0.25, middle);
+      }
+    }
+  });
+
+  it("pops a drifted firework where it is drawn, not where it launched", () => {
+    const show = windyShow();
+    updateShow(show, 3, middle);
+    const drawn = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+    const launched = WIDTH * 0.5;
+    expect(drawn.x - launched).toBeGreaterThan(basicRocket.hitRadius);
+    expect(clickAt(show, { x: launched, y: drawn.y }, WIDTH, HEIGHT)).toBeNull();
+    expect(clickAt(show, drawn, WIDTH, HEIGHT)?.kind).toBe("popped");
+  });
+
+  it("makes the flight take longer in the drizzle", () => {
+    const show = createShow([basicRocket], () => 0.2);
+    expect(show.weather).toBe("drizzle");
+    updateShow(show, 0.01, middle);
+    updateShow(show, flightTime, middle);
+    expect(show.fizzled).toBe(0);
+    expect(show.active).toHaveLength(1);
+    updateShow(show, flightTime / 4, middle);
+    expect(show.fizzled).toBe(1);
+  });
+
+  it("doesn't blow or slow stars split off a crossette", () => {
+    const show = windyShow([crossette]);
+    updateShow(show, 2, middle);
+    const at = fireworkPosition(show.active[0], WIDTH, HEIGHT);
+    clickAt(show, at, WIDTH, HEIGHT);
+    for (const star of show.active) {
+      expect(star.wind).toBeUndefined();
+      expect(star.rise).toBeUndefined();
+    }
+  });
+});
