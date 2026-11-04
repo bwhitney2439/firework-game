@@ -1,4 +1,11 @@
 import type { FireworkType, Point } from "../fireworks/types";
+import {
+  type Weather,
+  pickWeather,
+  pickWindStrength,
+  riseFactor,
+  windDrift,
+} from "./weather";
 
 /** Seconds between launches. */
 export const LAUNCH_INTERVAL = 1;
@@ -22,6 +29,10 @@ export interface Firework {
   origin?: Point;
   /** Direction a star flies out in, in radians. Only used with `origin`. */
   heading?: number;
+  /** Wind at launch, as a share of the screen width per second. None is still air. */
+  wind?: number;
+  /** How fast it climbs compared with a clear night. None is 1. */
+  rise?: number;
 }
 
 export interface Burst {
@@ -38,6 +49,9 @@ export interface Show {
   timeToNextLaunch: number;
   popped: number;
   fizzled: number;
+  weather: Weather;
+  /** Share of the screen width the wind pushes a firework per second. Positive is right. */
+  windStrength: number;
 }
 
 /** What happened to a firework. Scoring and crowd code can use these. */
@@ -45,7 +59,12 @@ export type ShowEvent =
   | { kind: "popped"; firework: Firework; at: Point }
   | { kind: "fizzled"; firework: Firework };
 
-export function createShow(stock: FireworkType[]): Show {
+/**
+ * Sets up a show. With a `random` it picks the night's weather; without
+ * one the night is clear.
+ */
+export function createShow(stock: FireworkType[], random?: () => number): Show {
+  const weather = random ? pickWeather(random) : "clear";
   return {
     queue: [...stock],
     active: [],
@@ -53,12 +72,14 @@ export function createShow(stock: FireworkType[]): Show {
     timeToNextLaunch: 0,
     popped: 0,
     fizzled: 0,
+    weather,
+    windStrength: random ? pickWindStrength(weather, random) : 0,
   };
 }
 
 /** Flight progress: 0 at launch and 1 at the top of the flight. */
 export function flightProgress(firework: Firework): number {
-  return firework.age * firework.type.riseSpeed;
+  return firework.age * firework.type.riseSpeed * (firework.rise ?? 1);
 }
 
 /** True for a star split off another firework, which isn't from the stock. */
@@ -81,9 +102,19 @@ export function fireworkPosition(
   }
   const climb = height * (1 - TOP_MARGIN);
   return {
-    x: firework.launchX * width + firework.type.pathOffset(firework.age),
+    x: driftedX(firework) * width + firework.type.pathOffset(firework.age),
     y: height - flightProgress(firework) * climb,
   };
+}
+
+/**
+ * Where the wind has blown a firework, as a share of the screen width.
+ * It stays inside the side margins, so the wind can't push it off screen.
+ */
+function driftedX(firework: Firework): number {
+  if (!firework.wind) return firework.launchX;
+  const x = firework.launchX + windDrift(firework.age, firework.wind);
+  return Math.min(Math.max(x, SIDE_MARGIN), 1 - SIDE_MARGIN);
 }
 
 /** Moves the show forward by dt seconds. */
@@ -105,6 +136,7 @@ export function updateShow(
       type,
       launchX: SIDE_MARGIN + random() * (1 - 2 * SIDE_MARGIN),
       age: -show.timeToNextLaunch,
+      ...weatherAtLaunch(show),
     });
     show.timeToNextLaunch += LAUNCH_INTERVAL;
   }
@@ -122,6 +154,15 @@ export function updateShow(
   show.bursts = show.bursts.filter((burst) => burst.age < BURST_DURATION);
 
   return events;
+}
+
+/** What the weather does to a firework launched now. A clear night adds nothing. */
+function weatherAtLaunch(show: Show): Pick<Firework, "wind" | "rise"> {
+  const changes: Pick<Firework, "wind" | "rise"> = {};
+  if (show.windStrength !== 0) changes.wind = show.windStrength;
+  const rise = riseFactor(show.weather);
+  if (rise !== 1) changes.rise = rise;
+  return changes;
 }
 
 /** Pops the closest firework in range of the click, if there is one. */

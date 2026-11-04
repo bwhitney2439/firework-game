@@ -72,7 +72,7 @@ function goToShop(): void {
 }
 
 function startNextShow(): void {
-  game.show = createShow(fireworksForShow(game.state, fireworkTypes));
+  game.show = createShow(fireworksForShow(game.state, fireworkTypes), Math.random);
   game.stats = createStats();
   startScoringAtVenue(game.scoring, game.state);
   setPhase("show");

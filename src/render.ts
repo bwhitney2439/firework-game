@@ -3,6 +3,7 @@ import {
   type Show,
   fireworkPosition,
 } from "./game/show";
+import { rainDrops, weatherLabel } from "./game/weather";
 import { crowdExcitement, drawScenery } from "./polish/scenery";
 
 export function render(
@@ -11,7 +12,9 @@ export function render(
   width: number,
   height: number,
 ): void {
-  drawScenery(ctx, width, height, performance.now() / 1000, crowdExcitement(show.bursts));
+  const time = performance.now() / 1000;
+  drawScenery(ctx, width, height, time, crowdExcitement(show.bursts));
+  if (show.weather === "drizzle") drawRain(ctx, time, width, height);
 
   for (const firework of show.active) {
     const at = fireworkPosition(firework, width, height);
@@ -21,12 +24,31 @@ export function render(
     burst.type.drawBurst(ctx, burst.at, burst.age / BURST_DURATION);
   }
 
+  const label = weatherLabel(show.weather, show.windStrength);
   ctx.fillStyle = "#f5f5f5";
   ctx.textAlign = "left";
   ctx.font = "18px system-ui, sans-serif";
   ctx.fillText(
-    `Popped ${show.popped}   Fizzled ${show.fizzled}   Left ${show.queue.length}`,
+    `Popped ${show.popped}   Fizzled ${show.fizzled}   Left ${show.queue.length}` +
+      (label ? `   ${label}` : ""),
     16,
     30,
   );
+}
+
+/** Thin, faint rain lines over the sky, behind the fireworks. */
+function drawRain(
+  ctx: CanvasRenderingContext2D,
+  time: number,
+  width: number,
+  height: number,
+): void {
+  ctx.strokeStyle = "rgba(170, 190, 220, 0.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const drop of rainDrops(time, width, height)) {
+    ctx.moveTo(drop.x, drop.y);
+    ctx.lineTo(drop.x + drop.dx, drop.y + drop.dy);
+  }
+  ctx.stroke();
 }
