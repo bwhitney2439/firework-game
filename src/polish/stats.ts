@@ -113,17 +113,34 @@ export interface ShowScore {
   bestCombo: number;
 }
 
-export function rate(hitRate: number, launched: number): Rating {
+/**
+ * Most missed clicks per launched firework that still allows a "Perfect
+ * show!": one stray click for every five fireworks.
+ */
+export const PERFECT_MAX_MISSES_PER_LAUNCH = 0.2;
+/**
+ * Most missed clicks per launched firework that still allows
+ * "Spectacular!": one stray click for every two fireworks. A show with more
+ * misses than this is a "Crowd pleaser" at best, so mashing never rates well.
+ */
+export const SPECTACULAR_MAX_MISSES_PER_LAUNCH = 0.5;
+
+/**
+ * Rates a show by its hit rate and its missed clicks. The top two ratings
+ * also need few missed clicks for each launched firework.
+ */
+export function rate(hitRate: number, launched: number, missedClicks: number): Rating {
   if (launched === 0) {
     return { title: "No show tonight", line: "Nothing went up at all." };
   }
-  if (hitRate >= 1) {
+  const missesPerLaunch = missedClicks / launched;
+  if (hitRate >= 1 && missesPerLaunch <= PERFECT_MAX_MISSES_PER_LAUNCH) {
     return {
       title: "Perfect show!",
       line: "Not a single dud. Remember, remember!",
     };
   }
-  if (hitRate >= 0.8) {
+  if (hitRate >= 0.8 && missesPerLaunch <= SPECTACULAR_MAX_MISSES_PER_LAUNCH) {
     return {
       title: "Spectacular!",
       line: "The crowd will talk about this one.",
@@ -153,6 +170,6 @@ export function summarize(stats: ShowStats, score: ShowScore): Summary {
     hitRate,
     money: score.showMoney,
     bestCombo: score.bestCombo,
-    rating: rate(hitRate, stats.launched),
+    rating: rate(hitRate, stats.launched, stats.missedClicks),
   };
 }
