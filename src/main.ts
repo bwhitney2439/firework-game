@@ -3,7 +3,23 @@ import { loadGame, saveGame } from "./game/save";
 import { createShow } from "./game/show";
 import { currentVenue, fireworksForShow } from "./game/state";
 import { settleScoredEvents, startScoringAtVenue } from "./game/wallet";
-import { createSound, popCheer } from "./polish/sound";
+import {
+  drawPause,
+  drawPauseButton,
+  drawSpeakerButton,
+  isInside,
+  pauseButtonBox,
+  pauseClick,
+  speakerButtonBox,
+} from "./polish/pauseScreen";
+import {
+  createSound,
+  loadVolume,
+  nextVolume,
+  popCheer,
+  saveVolume,
+  type VolumeLevel,
+} from "./polish/sound";
 import {
   createStats,
   isSummaryDue,
@@ -30,9 +46,9 @@ const MAX_STEP = 0.1;
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game")!;
 const ctx = canvas.getContext("2d")!;
-const sound = createSound();
+const sound = createSound(undefined, undefined, loadVolume());
 
-type Phase = "title" | "shop" | "show" | "summary";
+type Phase = "title" | "shop" | "show" | "paused" | "summary";
 
 const game = {
   state: loadGame(),
@@ -63,6 +79,35 @@ function startNextShow(): void {
   saveGame(game.state);
 }
 
+/**
+ * Pauses a show or resumes a paused one. phaseTime is left alone, and the
+ * frame loop takes no step while paused, so resuming carries on with no jump.
+ */
+function togglePause(): void {
+  if (game.phase === "show") game.phase = "paused";
+  else if (game.phase === "paused") game.phase = "show";
+}
+
+function setVolume(level: VolumeLevel): void {
+  sound.setVolume(level);
+  saveVolume(level);
+}
+
+/** Mutes, or goes back to the volume heard before muting. */
+function toggleMute(): void {
+  sound.setMuted(!sound.isMuted());
+  saveVolume(sound.volume());
+}
+
+/**
+ * Leaves a paused show for the shop. Fireworks still in the air or waiting
+ * are not settled: they were never taken out of the stock, so, as with a
+ * reload, they come back for the next show and the money already made stays.
+ */
+function quitShow(): void {
+  goToShop();
+}
+
 /** Where a click on the summary goes next. */
 function afterSummary(): void {
   goToShop();
@@ -88,7 +133,11 @@ canvas.addEventListener("pointerdown", (event) => {
   sound.unlock();
   const click = { x: event.offsetX, y: event.offsetY };
   if (game.phase === "title") {
-    goToShop();
+    if (isInside(speakerButtonBox(canvas.clientWidth), click)) {
+      toggleMute();
+    } else {
+      goToShop();
+    }
     return;
   }
   if (game.phase === "shop") {
@@ -108,6 +157,17 @@ canvas.addEventListener("pointerdown", (event) => {
     if (canContinue(game.phaseTime)) afterSummary();
     return;
   }
+  if (game.phase === "paused") {
+    const action = pauseClick(click, canvas.clientWidth, canvas.clientHeight);
+    if (action === "resume") togglePause();
+    else if (action === "sound") setVolume(nextVolume(sound.volume()));
+    else if (action === "quit") quitShow();
+    return;
+  }
+  if (isInside(pauseButtonBox(), click)) {
+    togglePause();
+    return;
+  }
   const result = handleShowClick(
     game.scoring,
     game.show,
@@ -125,7 +185,17 @@ canvas.addEventListener("pointerdown", (event) => {
 
 window.addEventListener("keydown", (event) => {
   sound.unlock();
-  if (event.key === "m" || event.key === "M") sound.setMuted(!sound.isMuted());
+  if (event.key === "m" || event.key === "M") toggleMute();
+  else if (
+    !event.repeat &&
+    (event.key === "Escape" || event.key === "p" || event.key === "P")
+  ) {
+    togglePause();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && game.phase === "show") togglePause();
 });
 
 let lastTime = performance.now();
@@ -133,12 +203,13 @@ let lastTime = performance.now();
 function frame(time: number): void {
   const dt = Math.min((time - lastTime) / 1000, MAX_STEP);
   lastTime = time;
-  game.phaseTime += dt;
+  if (game.phase !== "paused") game.phaseTime += dt;
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
 
   if (game.phase === "title") {
     drawTitleScreen(ctx, width, height, time / 1000, sound.isMuted());
+    drawSpeakerButton(ctx, width, sound.isMuted());
   } else if (game.phase === "shop") {
     drawShop(ctx, game.state, fireworkTypes, width, height);
   } else {
@@ -152,9 +223,11 @@ function frame(time: number): void {
         sound.cheer(summarize(game.stats, game.scoring.score).hitRate);
       }
     }
-    updateScoring(game.scoring, dt);
+    if (game.phase !== "paused") updateScoring(game.scoring, dt);
     render(ctx, game.show, width, height);
     drawScoring(ctx, game.scoring, width, game.state.money, currentVenue(game.state).name);
+    if (game.phase === "show") drawPauseButton(ctx);
+    if (game.phase === "paused") drawPause(ctx, width, height, sound.volume());
     if (game.phase === "summary") {
       drawSummaryScreen(
         ctx,
