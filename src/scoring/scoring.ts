@@ -112,9 +112,9 @@ export function handleShowEvents(
  * combo ends, and a "Whiff" pop-up (see addWhiff) and a grey puff appear.
  * Listeners are not told, so the wallet does not change.
  */
-export function handleMiss(scoring: Scoring, at: Point, width: number): MissScore {
+export function handleMiss(scoring: Scoring, at: Point, width: number, height: number): MissScore {
   const missed = scoreMiss(scoring.score);
-  addWhiff(scoring.popups, popupAnchor(at, width));
+  addWhiff(scoring.popups, at, width, height);
   scoring.puffs.push({ at: { ...at }, age: 0 });
   return missed;
 }
@@ -139,7 +139,7 @@ export function handleShowClick(
 ): ShowClick {
   if (isShowOver(show)) return { kind: "ignored" };
   const popped = clickAt(show, click, width, height);
-  if (!popped) return { kind: "missed", score: handleMiss(scoring, click, width) };
+  if (!popped) return { kind: "missed", score: handleMiss(scoring, click, width, height) };
   return { kind: "popped", event: popped, scored: handleShowEvents(scoring, [popped], width, height) };
 }
 

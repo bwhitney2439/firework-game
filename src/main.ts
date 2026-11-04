@@ -254,6 +254,7 @@ function frame(time: number): void {
         height,
         game.phaseTime,
         game.bests,
+        touchScreen.matches,
       );
     }
   }

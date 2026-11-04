@@ -9,6 +9,7 @@ import {
   POPUP_TEXT_HEIGHT,
   WEATHER_LINE_BOTTOM,
   WEATHER_LINE_RIGHT,
+  WHIFF_EDGE_GAP,
   WHIFF_HALF_WIDTH,
   WHIFF_TEXT_HEIGHT,
 } from "./tuning";
@@ -68,21 +69,41 @@ export function addPopup(
   popups.push(popup);
 }
 
+/** A pixel spare when moving a "Whiff", so rounding can't make it touch as it drifts. */
+const SPARE = 1;
+
 /**
- * Adds the "Whiff" for a missed click at `at`. Only one shows at a time, so
- * mashing can't stack them up: a new one takes the old one's place. It is
- * moved down below any other pop-up it would cover. Pop-ups all drift up at
- * the same speed, so it stays clear of them as they rise.
+ * Adds the "Whiff" for a missed click at `at` on a `width` by `height`
+ * screen. Only one shows at a time, so mashing can't stack them up: a new one
+ * takes the old one's place. It is moved down below any other pop-up it would
+ * cover. If that would take it off the bottom of the screen it goes above them
+ * instead, and if there is no room there either it is left out (the grey puff
+ * still shows). Pop-ups all drift up at the same speed, so it stays clear of
+ * them as they rise.
  */
-export function addWhiff(popups: Popup[], at: Point): void {
+export function addWhiff(popups: Popup[], at: Point, width: number, height: number): void {
   removeWhere(popups, (popup) => popup.style === "whiff");
-  const whiff: Popup = { text: "Whiff", style: "whiff", at: { ...at }, age: 0 };
+  const x = Math.min(Math.max(at.x, WHIFF_HALF_WIDTH), width - WHIFF_HALF_WIDTH);
+  const highest = popupAnchor({ x, y: 0 }, width).y;
+  const lowest = height - WHIFF_EDGE_GAP;
+  const start = Math.max(Math.min(at.y, lowest), highest);
+  const whiff: Popup = { text: "Whiff", style: "whiff", at: { x, y: start }, age: 0 };
   for (;;) {
     const covered = popups.find((popup) => overlaps(popup, whiff));
     if (!covered) break;
-    whiff.at.y = popupPosition(covered).y + POPUP_GAP + WHIFF_TEXT_HEIGHT;
+    whiff.at.y = popupBox(covered).bottom + POPUP_GAP + WHIFF_TEXT_HEIGHT + SPARE;
   }
-  popups.push(whiff);
+  if (whiff.at.y <= lowest) {
+    popups.push(whiff);
+    return;
+  }
+  whiff.at.y = start;
+  for (;;) {
+    const covered = popups.find((popup) => overlaps(popup, whiff));
+    if (!covered) break;
+    whiff.at.y = popupBox(covered).top - POPUP_GAP - SPARE;
+  }
+  if (whiff.at.y >= highest) popups.push(whiff);
 }
 
 /** Where a pop-up's text is now, give or take, with its baseline at `bottom`. */

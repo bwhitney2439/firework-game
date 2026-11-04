@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createStats, summarize } from "./stats";
 import {
   canContinue,
+  continueText,
+  drawSummaryScreen,
   newBestLabels,
   starScale,
   summaryLayout,
@@ -50,6 +52,32 @@ describe("summary screen", () => {
     expect(starScale(0, time)).toBeGreaterThan(0);
     expect(starScale(2, time)).toBe(0);
     for (let t = 0; t < 2; t += 0.05) expect(starScale(1, t)).toBeLessThanOrEqual(1.25);
+  });
+
+  it("says Tap to continue on a touch screen and Click on a desktop", () => {
+    expect(continueText(false)).toBe("Click to continue");
+    expect(continueText(true)).toBe("Tap to continue");
+    const summary = summarize(createStats(), { showMoney: 0, bestCombo: 0 });
+    const drawn = (touch?: boolean) => {
+      const texts: string[] = [];
+      const ctx = new Proxy({} as Record<string | symbol, unknown>, {
+        get(target, key) {
+          if (key === "fillText") return (text: string) => texts.push(text);
+          if (key === "measureText") return (text: string) => ({ width: text.length * 8 });
+          return key in target ? target[key] : () => {};
+        },
+        set(target, key, value) {
+          target[key] = value;
+          return true;
+        },
+      }) as unknown as CanvasRenderingContext2D;
+      drawSummaryScreen(ctx, summary, 390, 844, 5, undefined, touch);
+      return texts;
+    };
+    expect(drawn()).toContain("Click to continue");
+    expect(drawn(false)).toContain("Click to continue");
+    expect(drawn(true)).toContain("Tap to continue");
+    expect(drawn(true).some((text) => text.includes("Click"))).toBe(false);
   });
 
   it("ignores clicks until it has been open a moment", () => {

@@ -71,6 +71,8 @@ export const POPUP_GAP = 8;
 export const WHIFF_TEXT_HEIGHT = 18;
 /** About half the width of the "Whiff" text. */
 export const WHIFF_HALF_WIDTH = 28;
+/** Space kept between the "Whiff" text and the bottom of the screen. */
+export const WHIFF_EDGE_GAP = 8;
 
 /** Seconds the grey puff of smoke from a missed click lasts. */
 export const PUFF_DURATION = 0.45;
