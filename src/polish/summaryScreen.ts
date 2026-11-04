@@ -171,10 +171,16 @@ function drawStars(
   }
 }
 
+/** The summary screen's last line: touch screens say "Tap" instead of "Click". */
+export function continueText(touch: boolean): string {
+  return `${touch ? "Tap" : "Click"} to continue`;
+}
+
 /**
  * Draws the end-of-show summary over the last frame of the show.
  * `time` is seconds since the summary opened and drives the fade-in.
- * `bests` says which of the venue's records the show beat.
+ * `bests` says which of the venue's records the show beat. `touch` is for
+ * touch screen wording (see continueText).
  */
 export function drawSummaryScreen(
   ctx: CanvasRenderingContext2D,
@@ -183,6 +189,7 @@ export function drawSummaryScreen(
   height: number,
   time: number,
   bests: NewBests = NO_BESTS,
+  touch = false,
 ): void {
   const fade = Math.min(time / FADE_IN, 1);
 
@@ -257,7 +264,7 @@ export function drawSummaryScreen(
   ctx.textAlign = "center";
   ctx.fillStyle = "#ffd166";
   ctx.font = "bold 20px system-ui, sans-serif";
-  ctx.fillText("Click to continue", centre, top + panelHeight - 28);
+  ctx.fillText(continueText(touch), centre, top + panelHeight - 28);
   ctx.restore();
   ctx.globalAlpha = 1;
 }
