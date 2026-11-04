@@ -1,15 +1,19 @@
-import { fireworkPosition, type ShowEvent } from "../game/show";
+import type { Point } from "../fireworks/types";
+import { clickAt, fireworkPosition, isShowOver, type Show, type ShowEvent } from "../game/show";
 import { drawScoreHud } from "./hud";
 import { formatMoney } from "../money";
 import { addPopup, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
 import {
   createScore,
+  type MissScore,
   resetScore,
   type ScoredEvent,
   type ScoreState,
   scoreEvent,
+  scoreMiss,
   tickScore,
 } from "./score";
+import { PUFF_DURATION, PUFF_RADIUS } from "./tuning";
 
 /** Gap in pixels between the cheer and the money below it. */
 const MONEY_OFFSET = 26;
@@ -21,11 +25,19 @@ const MONEY_OFFSET = 26;
 export interface Scoring {
   score: ScoreState;
   popups: Popup[];
+  /** Grey puffs of smoke where clicks hit nothing. */
+  puffs: Puff[];
   listeners: ((scored: ScoredEvent) => void)[];
 }
 
+/** A small puff of smoke where a click missed. */
+export interface Puff {
+  at: Point;
+  age: number;
+}
+
 export function createScoring(): Scoring {
-  return { score: createScore(), popups: [], listeners: [] };
+  return { score: createScore(), popups: [], puffs: [], listeners: [] };
 }
 
 /**
@@ -70,9 +82,47 @@ export function handleShowEvents(
   return results;
 }
 
+/**
+ * Scores a click at `at` that hit nothing: the crowd drops a little, the
+ * combo ends, and a "Whiff" pop-up and a grey puff appear. Listeners are not
+ * told, so the wallet does not change.
+ */
+export function handleMiss(scoring: Scoring, at: Point, width: number): MissScore {
+  const missed = scoreMiss(scoring.score);
+  addPopup(scoring.popups, "Whiff", "groan", popupAnchor(at, width));
+  scoring.puffs.push({ at: { ...at }, age: 0 });
+  return missed;
+}
+
+/** What a click during a show did. */
+export type ShowClick =
+  | { kind: "ignored" }
+  | { kind: "missed"; score: MissScore }
+  | { kind: "popped"; event: ShowEvent; scored: ScoredEvent[] };
+
+/**
+ * Handles a click on the show: pops the firework under it, or scores a miss.
+ * Once the show is over (and between shows) clicks are ignored, so they can
+ * never cost the crowd.
+ */
+export function handleShowClick(
+  scoring: Scoring,
+  show: Show,
+  click: Point,
+  width: number,
+  height: number,
+): ShowClick {
+  if (isShowOver(show)) return { kind: "ignored" };
+  const popped = clickAt(show, click, width, height);
+  if (!popped) return { kind: "missed", score: handleMiss(scoring, click, width) };
+  return { kind: "popped", event: popped, scored: handleShowEvents(scoring, [popped], width, height) };
+}
+
 export function updateScoring(scoring: Scoring, dt: number): void {
   tickScore(scoring.score, dt);
   scoring.popups = updatePopups(scoring.popups, dt);
+  for (const puff of scoring.puffs) puff.age += dt;
+  scoring.puffs = scoring.puffs.filter((puff) => puff.age < PUFF_DURATION);
 }
 
 /**
@@ -85,6 +135,31 @@ export function startScoringShow(
 ): void {
   resetScore(scoring.score, moneyMultiplier);
   scoring.popups = [];
+  scoring.puffs = [];
+}
+
+/** Draws each puff as a few grey blobs that spread out and fade. */
+function drawPuffs(ctx: CanvasRenderingContext2D, puffs: Puff[]): void {
+  ctx.save();
+  ctx.fillStyle = "#8a8f9c";
+  for (const puff of puffs) {
+    const progress = Math.min(puff.age / PUFF_DURATION, 1);
+    const radius = PUFF_RADIUS * (0.4 + 0.6 * progress);
+    ctx.globalAlpha = 0.6 * (1 - progress);
+    for (let i = 0; i < 3; i++) {
+      const angle = (i / 3) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(
+        puff.at.x + Math.cos(angle) * radius * 0.5,
+        puff.at.y + Math.sin(angle) * radius * 0.5 - progress * 6,
+        radius * 0.6,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 /** Draws the pop-ups and the score HUD (with the venue name) over the show. */
@@ -95,6 +170,7 @@ export function drawScoring(
   wallet: number,
   venue: string,
 ): void {
+  drawPuffs(ctx, scoring.puffs);
   drawPopups(ctx, scoring.popups);
   drawScoreHud(ctx, scoring.score, width, wallet, venue);
 }

@@ -31,6 +31,10 @@ export const CROWD_GAIN_LOW = 0.03;
 export const CROWD_GAIN_HIGH = 0.12;
 /** Crowd loss for a firework that fizzles. */
 export const CROWD_FIZZLE_LOSS = 0.15;
+/** Crowd loss for a click that hits nothing (much less than a fizzle). */
+export const MISS_CROWD_LOSS = 0.03;
+/** Whether a click that hits nothing ends the combo. */
+export const MISS_BREAKS_COMBO = true;
 
 /** The crowd multiplier starts above this crowd level. */
 export const CROWD_MULTIPLIER_THRESHOLD = 0.5;
@@ -52,3 +56,8 @@ export const POPUP_HALF_WIDTH = 70;
 export const COUNTS_LINE_BOTTOM = 40;
 /** Space kept between a pop-up and the text above it. */
 export const POPUP_GAP = 8;
+
+/** Seconds the grey puff of smoke from a missed click lasts. */
+export const PUFF_DURATION = 0.45;
+/** Radius in pixels of a puff of smoke at the end of its life. */
+export const PUFF_RADIUS = 14;
