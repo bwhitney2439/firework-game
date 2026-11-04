@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { basicRocket } from "../fireworks/basicRocket";
-import { clickAt, createShow, fireworkPosition, updateShow } from "../game/show";
+import { goldenRain } from "../fireworks/goldenRain";
+import type { FireworkType } from "../fireworks/types";
+import { clickAt, createShow, fireworkPosition, type ShowEvent, updateShow } from "../game/show";
 import { HUD_BOTTOM } from "./hud";
 import { popupAnchor, popupPosition, updatePopups } from "./popups";
 import {
@@ -13,7 +15,10 @@ import {
   updateScoring,
 } from "./scoring";
 import {
+  BANNER_DURATION,
+  BIG_MONEY_POPUP,
   COUNTS_LINE_BOTTOM,
+  FLASH_DURATION,
   MISS_CROWD_LOSS,
   POPUP_DURATION,
   POPUP_TEXT_HEIGHT,
@@ -231,5 +236,58 @@ describe("pop-ups", () => {
     updateScoring(scoring, POPUP_DURATION);
     expect(scoring.popups).toEqual([]);
     expect(updatePopups([], 1)).toEqual([]);
+  });
+});
+
+/** A pop of a firework of this type high in its flight, in the middle of the sky. */
+function popOf(type: FireworkType): ShowEvent {
+  return { kind: "popped", firework: { type, launchX: 0.5, age: 0.9 / type.riseSpeed }, at: { x: 500, y: 300 } };
+}
+
+describe("big-pop juice", () => {
+  it("lights the sky for a Golden rain but not for a rocket", () => {
+    const scoring = createScoring();
+    handleShowEvents(scoring, [popOf(basicRocket)], WIDTH, HEIGHT);
+    expect(scoring.juice.flash).toBe(0);
+    handleShowEvents(scoring, [popOf(goldenRain)], WIDTH, HEIGHT);
+    expect(scoring.juice.flash).toBe(1);
+  });
+
+  it("shows each combo milestone banner just once", () => {
+    const scoring = createScoring();
+    const banners: (string | undefined)[] = [];
+    for (let i = 1; i <= 16; i++) {
+      const before = scoring.juice.banner;
+      handleShowEvents(scoring, [popOf(basicRocket)], WIDTH, HEIGHT);
+      if (scoring.juice.banner !== before) banners.push(scoring.juice.banner?.text);
+      updateScoring(scoring, 0.1);
+    }
+    expect(banners).toEqual(["Sizzling! x5", "Blazing! x10", "Inferno! x15"]);
+  });
+
+  it("fades the flash and banner away as the show goes on", () => {
+    const scoring = createScoring();
+    for (let i = 0; i < 5; i++) handleShowEvents(scoring, [popOf(goldenRain)], WIDTH, HEIGHT);
+    expect(scoring.juice.banner?.text).toBe("Sizzling! x5");
+    updateScoring(scoring, Math.max(FLASH_DURATION, BANNER_DURATION));
+    expect(scoring.juice.flash).toBe(0);
+    expect(scoring.juice.banner).toBeNull();
+  });
+
+  it("clears the flash and banner for a new show", () => {
+    const scoring = createScoring();
+    for (let i = 0; i < 5; i++) handleShowEvents(scoring, [popOf(goldenRain)], WIDTH, HEIGHT);
+    startScoringShow(scoring);
+    expect(scoring.juice.flash).toBe(0);
+    expect(scoring.juice.banner).toBeNull();
+  });
+
+  it("makes the money pop-up bigger for a big pop", () => {
+    const scoring = createScoring();
+    handleShowEvents(scoring, [popOf(basicRocket)], WIDTH, HEIGHT);
+    handleShowEvents(scoring, [popOf(goldenRain)], WIDTH, HEIGHT);
+    const money = scoring.popups.filter((popup) => popup.style !== "cheer");
+    expect(money.map((popup) => popup.style)).toEqual(["money", "bigMoney"]);
+    expect(scoring.score.showMoney).toBeGreaterThan(BIG_MONEY_POPUP);
   });
 });

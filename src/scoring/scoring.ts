@@ -2,6 +2,17 @@ import type { Point } from "../fireworks/types";
 import { clickAt, fireworkPosition, isShowOver, type Show, type ShowEvent } from "../game/show";
 import { drawScoreHud } from "./hud";
 import { formatMoney } from "../money";
+import {
+  comboBanner,
+  createJuice,
+  drawJuice,
+  flashStrength,
+  type Juice,
+  resetJuice,
+  triggerBanner,
+  triggerFlash,
+  updateJuice,
+} from "../polish/juice";
 import { addPopup, drawPopups, type Popup, popupAnchor, updatePopups } from "./popups";
 import {
   createScore,
@@ -13,7 +24,7 @@ import {
   scoreMiss,
   tickScore,
 } from "./score";
-import { PUFF_DURATION, PUFF_RADIUS } from "./tuning";
+import { BIG_MONEY_POPUP, PUFF_DURATION, PUFF_RADIUS } from "./tuning";
 
 /** Gap in pixels between the cheer and the money below it. */
 const MONEY_OFFSET = 26;
@@ -27,6 +38,8 @@ export interface Scoring {
   popups: Popup[];
   /** Grey puffs of smoke where clicks hit nothing. */
   puffs: Puff[];
+  /** The sky flash for big pops and the banner for combo milestones. */
+  juice: Juice;
   listeners: ((scored: ScoredEvent) => void)[];
 }
 
@@ -37,7 +50,7 @@ export interface Puff {
 }
 
 export function createScoring(): Scoring {
-  return { score: createScore(), popups: [], puffs: [], listeners: [] };
+  return { score: createScore(), popups: [], puffs: [], juice: createJuice(), listeners: [] };
 }
 
 /**
@@ -51,7 +64,10 @@ export function onScored(
   scoring.listeners.push(listener);
 }
 
-/** Scores show events and adds the pop-ups for them. */
+/**
+ * Scores show events and adds the pop-ups for them. An expensive pop lights
+ * up the sky, and a combo milestone shows a banner.
+ */
 export function handleShowEvents(
   scoring: Scoring,
   events: Iterable<ShowEvent | null>,
@@ -68,10 +84,14 @@ export function handleShowEvents(
         ? `${scored.score.cheer}! x${scored.score.combo}`
         : `${scored.score.cheer}!`;
       addPopup(scoring.popups, cheer, "cheer", at);
-      addPopup(scoring.popups, `+${formatMoney(scored.score.money)}`, "money", {
+      const money = scored.score.money >= BIG_MONEY_POPUP ? "bigMoney" : "money";
+      addPopup(scoring.popups, `+${formatMoney(scored.score.money)}`, money, {
         x: at.x,
         y: at.y + MONEY_OFFSET,
       });
+      triggerFlash(scoring.juice, flashStrength(scored.event.firework.type.baseValue));
+      const banner = comboBanner(scored.score.combo);
+      if (banner) triggerBanner(scoring.juice, banner);
     } else {
       const at = popupAnchor(fireworkPosition(scored.event.firework, width, height), width);
       addPopup(scoring.popups, "Aww...", "groan", at);
@@ -121,6 +141,7 @@ export function handleShowClick(
 export function updateScoring(scoring: Scoring, dt: number): void {
   tickScore(scoring.score, dt);
   scoring.popups = updatePopups(scoring.popups, dt);
+  updateJuice(scoring.juice, dt);
   for (const puff of scoring.puffs) puff.age += dt;
   scoring.puffs = scoring.puffs.filter((puff) => puff.age < PUFF_DURATION);
 }
@@ -136,6 +157,7 @@ export function startScoringShow(
   resetScore(scoring.score, moneyMultiplier);
   scoring.popups = [];
   scoring.puffs = [];
+  resetJuice(scoring.juice);
 }
 
 /** Draws each puff as a few grey blobs that spread out and fade. */
@@ -162,14 +184,19 @@ function drawPuffs(ctx: CanvasRenderingContext2D, puffs: Puff[]): void {
   ctx.restore();
 }
 
-/** Draws the pop-ups and the score HUD (with the venue name) over the show. */
+/**
+ * Draws the sky flash, combo banner, pop-ups and the score HUD (with the
+ * venue name) over the show. The height defaults to the canvas's own.
+ */
 export function drawScoring(
   ctx: CanvasRenderingContext2D,
   scoring: Scoring,
   width: number,
   wallet: number,
   venue: string,
+  height: number = ctx.canvas.clientHeight,
 ): void {
+  drawJuice(ctx, scoring.juice, width, height);
   drawPuffs(ctx, scoring.puffs);
   drawPopups(ctx, scoring.popups);
   drawScoreHud(ctx, scoring.score, width, wallet, venue);

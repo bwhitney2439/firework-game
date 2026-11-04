@@ -61,3 +61,30 @@ export const POPUP_GAP = 8;
 export const PUFF_DURATION = 0.45;
 /** Radius in pixels of a puff of smoke at the end of its life. */
 export const PUFF_RADIUS = 14;
+
+/** Combos that get a big banner across the middle, and the word for each. */
+export const COMBO_MILESTONES: readonly { combo: number; word: string }[] = [
+  { combo: 5, word: "Sizzling" },
+  { combo: 10, word: "Blazing" },
+  { combo: 15, word: "Inferno" },
+];
+/** Seconds a combo banner stays up. Kept under a second so it never hides a launch for long. */
+export const BANNER_DURATION = 0.9;
+/** Most opacity of a combo banner, so the fireworks behind still show. */
+export const BANNER_ALPHA_MAX = 0.6;
+
+/** Types worth at least this baseValue light up the sky when popped (Chrysanthemum and up). */
+export const FLASH_MIN_BASE_VALUE = 5;
+/** Types worth this baseValue or more get the full flash (Golden rain). */
+export const FLASH_FULL_BASE_VALUE = 25;
+/** Strength of the weakest flash, as a share of the full flash. */
+export const FLASH_MIN_STRENGTH = 0.5;
+/** Opacity of the full flash. Kept soft for players sensitive to flashing light. */
+export const FLASH_ALPHA_MAX = 0.25;
+/** Seconds a flash takes to fade to nothing. */
+export const FLASH_DURATION = 0.6;
+/** Fewest seconds between the start of two flashes, so the sky never strobes. */
+export const FLASH_MIN_GAP = 1;
+
+/** A pop worth at least this much money gets the bigger money pop-up. */
+export const BIG_MONEY_POPUP = 100;
